@@ -1,3 +1,4 @@
+# From Avida
 build
 cbuild
 CMakeCache.txt
@@ -9,3 +10,12 @@ install_manifest.txt
 wbuild
 DerivedData
 
+# Editors
+.vscode
+
+# R
+.Rhistory
+
+# Python
+__pycache__
+pyenv/
