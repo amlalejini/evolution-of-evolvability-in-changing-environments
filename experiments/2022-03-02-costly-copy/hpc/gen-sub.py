@@ -10,7 +10,7 @@ default_seed_offset = 1000
 default_account = "devolab"
 default_num_replicates = 30
 
-job_time_request = "96:00:00"
+job_time_request = "120:00:00"
 job_memory_request = "4G"
 job_name = "avida"
 executable = "avida"
@@ -20,7 +20,7 @@ base_script_filename = './base_script.txt'
 # Create combo object to collect all conditions we'll run
 combos = CombinationCollector()
 
-combos.register_var("EVENTS_FILE")
+combos.register_var("EVENTS_FILE__COPY_OVER")
 combos.register_var("COPY_MUT_PROB")
 combos.register_var("COSTLY_COPY__COPY_OVER")
 combos.register_var("WORLD_SIZE__COPY_OVER")
@@ -70,10 +70,10 @@ combos.add_val(
 )
 
 combos.add_val(
-    "EVENTS_FILE",
+    "EVENTS_FILE__COPY_OVER",
     [
-        "events_const-a.cfg",
-        "events_const-b.cfg"
+        "-set EVENT_FILE events_const-a.cfg -set ANALYZE_FILE analyze_env-a.cfg",
+        "-set EVENT_FILE events_const-b.cfg -set ANALYZE_FILE analyze_env-b.cfg"
     ]
 )
 
