@@ -12,7 +12,7 @@ default_num_replicates = 30
 
 job_time_request = "120:00:00"
 job_memory_request = "4G"
-job_name = "avida"
+job_name = "03-02"
 executable = "avida"
 
 base_script_filename = './base_script.txt'
