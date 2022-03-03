@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 REPLICATES=10
-EXP_SLUG=2022-03-costly-copy
+EXP_SLUG=2022-03-02-costly-copy
 ACCOUNT=devolab
 SEED_OFFSET=1000
 
