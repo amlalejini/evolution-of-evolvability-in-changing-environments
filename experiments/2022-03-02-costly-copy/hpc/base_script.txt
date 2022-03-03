@@ -9,7 +9,7 @@
 
 ########## Command Lines to Run ##########
 
-module load GCCcore/9.1.0
+module load GCC/11.2.0
 
 JOB_SEED_OFFSET=<<JOB_SEED_OFFSET>>
 SEED=$((JOB_SEED_OFFSET + SLURM_ARRAY_TASK_ID - 1))
