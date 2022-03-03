@@ -12,6 +12,7 @@ DerivedData
 
 # Editors
 .vscode
+pat.txt
 
 # R
 .Rhistory
