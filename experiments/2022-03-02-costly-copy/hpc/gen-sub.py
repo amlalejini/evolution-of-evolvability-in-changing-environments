@@ -44,7 +44,7 @@ combos.add_val(
 combos.add_val(
     "EVO_MUT_RATES__COPY_OVER",
     [
-        "-set META_COPY_MUT 1.0 -set META_STD_DEV 0.01 -set MUT_RATE_SOURCE 1"
+        "-set META_COPY_MUT 1.0 -set META_STD_DEV 0.01 -set MUT_RATE_SOURCE 2"
     ]
 )
 

@@ -24,7 +24,7 @@ mkdir -p ${RUN_DIR}
 cd ${RUN_DIR}
 cp ${CONFIG_DIR}/*.cfg .
 cp ${CONFIG_DIR}/*.org .
-cp ${CONFIG_DIR}/*.py .
+#cp ${CONFIG_DIR}/*.py .
 cp ${CONFIG_DIR}/${EXEC} .
 
 ######## Run experiment ########
@@ -38,7 +38,7 @@ cd ${RUN_DIR}
 
 rm ${RUN_DIR}/*.cfg
 rm ${RUN_DIR}/*.org
-rm ${RUN_DIR}/*.py
+#rm ${RUN_DIR}/*.py
 rm ${RUN_DIR}/${EXEC}
 
 
