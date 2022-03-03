@@ -26,3 +26,13 @@ Avida parameters most relevant to these experiments.
 Non-standard output important for these experiments.
 
 - `PrintMutationRateData`
+
+## HPC
+
+Running on MSU's HPC
+
+```
+module load CMake/3.18.4
+module load GCC/11.2.0
+CXX="g++"
+```
