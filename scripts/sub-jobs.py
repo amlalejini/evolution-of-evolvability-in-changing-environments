@@ -20,7 +20,7 @@ def main():
     for job_file in job_files:
         job_path = os.path.join(job_dir, job_file)
         print(f"Submitting {job_path}")
-        cmd = f"cd {job_dir}; squeue {job_file}"
+        cmd = f"cd {job_dir}; sbatch {job_file}"
         # print(cmd)
         subprocess.run(cmd, shell=True)
 
