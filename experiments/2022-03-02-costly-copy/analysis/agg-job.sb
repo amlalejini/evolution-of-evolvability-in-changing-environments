@@ -1,0 +1,25 @@
+#!/bin/bash
+###############################################################
+#SBATCH --job-name=agg-data
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=8G
+#SBATCH --time=4:00:00
+#SBATCH --account=devolab
+###############################################################
+
+EXP_SLUG=2022-03-02-costly-copy
+PROJECT_NAME=evolution-of-evolvability-in-changing-environments
+UPDATE=300000
+TS_RANGE_0=0
+TS_RANGE_1=${UPDATE}
+
+ANALYSIS_DIR=/mnt/home/lalejini/devo_ws/${PROJECT_NAME}/experiments/${EXP_SLUG}/analysis
+DATA_DIR=/mnt/scratch/lalejini/data/evo-evolvability/${EXP_SLUG}
+
+cd ${ANALYSIS_DIR}
+
+source ../../../pyenv/bin/activate
+
+python3 aggregate.py --data_dir ${DATA_DIR} --dump ./dump/ --update ${UPDATE} --time_series_range ${TS_RANGE_0} ${TS_RANGE_1}
