@@ -3,6 +3,7 @@
 git submodule init
 git submodule update
 
+cd avida
 mkdir -p cbuild
 cd cbuild
 cmake "$@" ../
