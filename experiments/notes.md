@@ -1,5 +1,11 @@
 # Experiment notes
 
+TODO
+
+- Incorporate events file generation into job script generation
+  - First, generate events file and then only copy appropriate events file, output a csv with the environment sequence inside
+- Use standard file naming to infer environment parameterization from EVENT_FILE
+
 Narrative
 
 - Changing environments promote multiple kinds of evolvability

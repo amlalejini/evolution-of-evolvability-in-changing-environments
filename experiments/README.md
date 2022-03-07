@@ -6,6 +6,8 @@ Avida parameters most relevant to these experiments.
 
 - General
   - `RANDOM_SEED`
+- Population structure
+  - `BIRTH_METHOD` (4, mass action)
 - Variable mutation rates
   - `META_COPY_MUT` (1.0)
   - `META_STD_DEV` (0.01)
