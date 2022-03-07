@@ -148,6 +148,8 @@ def main():
     def keep_line(u): return u <= time_series_range[1] and u >= time_series_range[0]
 
     # Loop over runs, aggregating data from each.
+    total_runs = len(run_dirs)
+    cur_run_i = 0
     for run_dir in run_dirs:
         run_path = os.path.join(data_dir, run_dir)
 
@@ -159,7 +161,8 @@ def main():
         summary_info = {}                   # Hold summary information about run. Indexed by field.
         time_series_info = {}               # Hold time series information. Indexed by update.
 
-        print(f"Processing: {run_path}")
+        cur_run_i += 1
+        print(f"Processing ({cur_run_i}/{total_runs}): {run_path}")
 
         ############################################################
         # Extract commandline configuration settings (from cmd.log file)
