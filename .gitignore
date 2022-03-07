@@ -21,5 +21,8 @@ pat.txt
 __pycache__
 pyenv/
 
+# Data
+data/
+
 # Local scratch directories
 experiments/*/analysis/test
