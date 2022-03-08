@@ -21,7 +21,7 @@ Avida parameters most relevant to these experiments.
   - `COPY_MUT_PROB` (0.01)
 - Costly h-copy
   - `COSTLY_HEAD_COPY`
-  - `MAX_HEAD_COPY_COST` (0.01)
+  - `MAX_HEAD_COPY_COST`
 
 ## Relevant Avida output files
 
