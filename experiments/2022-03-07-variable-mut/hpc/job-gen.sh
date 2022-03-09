@@ -8,7 +8,7 @@ JOB_TIME=00:05:00
 
 SCRATCH_EXP_DIR=/mnt/scratch/lalejini/data/evo-evolvability
 REPO_DIR=/mnt/home/lalejini/devo_ws/evolution-of-evolvability-in-changing-environments
-HOME_EXP_DIR=${HOME_EXP_DIR}/experiments
+HOME_EXP_DIR=${REPO_DIR}/experiments
 
 DATA_DIR=${SCRATCH_EXP_DIR}/${EXP_SLUG}
 JOB_DIR=${SCRATCH_EXP_DIR}/${EXP_SLUG}/jobs

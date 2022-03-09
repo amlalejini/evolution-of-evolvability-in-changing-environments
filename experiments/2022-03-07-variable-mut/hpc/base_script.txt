@@ -20,7 +20,8 @@ RUN_DIR=<<RUN_DIR>>
 
 # Load correct environment
 cd ${REPO_DIR}
-./load-hpc-env.sh
+module load GCCcore/11.2.0
+module load Python/3.9.6
 # Activate python virtual environment
 source ${REPO_DIR}/pyenv/bin/activate
 
