@@ -283,6 +283,7 @@ def main():
         gen_2step_mutants_cmd = 'python scripts/gen-mutants.py --steps 2 --analysis_output mutants_step-2.dat --inst_set ${CONFIG_DIR}/instset-heads.cfg --input ${RUN_DIR}/data/analysis/final_dominant.dat --dump ${RUN_DIR} --avida_args "${RUN_PARAMS}" --num_tasks 6 --run_avida_analysis --run_dir ${RUN_DIR}'
         analysis_commands += "cd ${REPO_DIR}\n"
         analysis_commands += gen_1step_mutants_cmd + "\n"
+        analysis_commands += gen_2step_mutants_cmd + "\n"
         analysis_commands += "cd ${RUN_DIR}\n"
 
         file_str = file_str.replace("<<ANALYSIS_COMMANDS>>", analysis_commands)

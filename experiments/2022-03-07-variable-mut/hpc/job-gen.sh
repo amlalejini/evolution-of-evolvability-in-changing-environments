@@ -4,7 +4,7 @@ REPLICATES=10
 EXP_SLUG=2022-03-07-variable-mut
 ACCOUNT=devolab
 SEED_OFFSET=2000
-JOB_TIME=00:05:00
+JOB_TIME=04:00:00
 
 SCRATCH_EXP_DIR=/mnt/scratch/lalejini/data/evo-evolvability
 REPO_DIR=/mnt/home/lalejini/devo_ws/evolution-of-evolvability-in-changing-environments
