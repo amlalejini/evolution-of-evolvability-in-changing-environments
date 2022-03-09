@@ -10,3 +10,5 @@ Conditions
   -  30r, 300r, 3000r
 - Starting mutation rate
   - 0.0001, 0.001, 0.0316
+
+NOTE: substantially reduce frequency of output!
