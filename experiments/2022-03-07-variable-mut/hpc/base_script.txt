@@ -9,16 +9,20 @@
 
 ########## Command Lines to Run ##########
 
-module load GCC/11.2.0
-
 JOB_SEED_OFFSET=<<JOB_SEED_OFFSET>>
 SEED=$((JOB_SEED_OFFSET + SLURM_ARRAY_TASK_ID - 1))
 
 EXEC=<<EXEC>>
-CONFIG_DIR=<<CONFIG_DIR>>
-
 # Setup all directories at the beginning
+CONFIG_DIR=<<CONFIG_DIR>>
+REPO_DIR=<<REPO_DIR>>
 RUN_DIR=<<RUN_DIR>>
+
+# Load correct environment
+cd ${REPO_DIR}
+./load-hpc-env.sh
+# Activate python virtual environment
+source ${REPO_DIR}/pyenv/bin/activate
 
 mkdir -p ${RUN_DIR}
 cd ${RUN_DIR}

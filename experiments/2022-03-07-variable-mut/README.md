@@ -12,3 +12,5 @@ Conditions
   - 0.0001, 0.001, 0.0316
 
 NOTE: substantially reduce frequency of output!
+
+- Output we don't need: divide_mut.dat

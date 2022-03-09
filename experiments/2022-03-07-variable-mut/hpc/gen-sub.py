@@ -12,9 +12,9 @@ import markov_events
 default_seed_offset = 2000
 default_account = "devolab"
 default_num_replicates = 30
+default_job_time_request = "120:00:00"
 
 total_updates = 300000
-job_time_request = "120:00:00"
 job_memory_request = "4G"
 job_name = "03-07"
 executable = "avida"
@@ -86,21 +86,25 @@ def main():
     parser = argparse.ArgumentParser(description="Run submission script.")
     parser.add_argument("--data_dir", type=str, help="Where is the output directory for phase one of each run?")
     parser.add_argument("--config_dir", type=str, help="Where is the configuration directory for experiment?")
+    parser.add_argument("--repo_dir", type=str, help="Where is the repository for this experiment?")
     parser.add_argument("--job_dir", type=str, default=None, help="Where to output these job files? If none, put in 'jobs' directory inside of the data_dir")
     parser.add_argument("--replicates", type=int, default=default_num_replicates, help="How many replicates should we run of each condition?")
-    parser.add_argument("--account", type=str, default=default_account, help="Value to use for the slurm ACCOUNT")
     parser.add_argument("--seed_offset", type=int, default=default_seed_offset, help="Value to offset random number seeds by")
     parser.add_argument("--force_events_gen", action="store_true", help="Should we force events file generation even if files already exist?")
+    parser.add_argument("--account", type=str, default=default_account, help="Value to use for the slurm ACCOUNT")
+    parser.add_argument("--time_request", type=str, default=default_job_time_request, help="How long to request for each job on hpc?")
 
     # Load in command line arguments
     args = parser.parse_args()
     data_dir = args.data_dir
     config_dir = args.config_dir
     job_dir = args.job_dir
+    repo_dir = args.repo_dir
     num_replicates = args.replicates
     hpc_account = args.account
     seed_offset = args.seed_offset
     force_events_gen = args.force_events_gen
+    job_time_request = args.time_request
 
     # Load in the base slurm file
     base_sub_script = ""
@@ -120,8 +124,10 @@ def main():
     print(f'Generating {num_jobs} across {len(combo_list)} files!')
     print(f' - Data directory: {data_dir}')
     print(f' - Config directory: {config_dir}')
+    print(f' - Repository directory: {repo_dir}')
     print(f' - Replicates: {num_replicates}')
     print(f' - Account: {hpc_account}')
+    print(f' - Time Request: {job_time_request}')
     print(f' - Seed offset: {seed_offset}')
     print(f' - Force events generation: {force_events_gen}')
 
@@ -142,6 +148,7 @@ def main():
         file_str = file_str.replace("<<MEMORY_REQUEST>>", job_memory_request)
         file_str = file_str.replace("<<JOB_NAME>>", job_name)
         file_str = file_str.replace("<<CONFIG_DIR>>", config_dir)
+        file_str = file_str.replace("<<REPO_DIR>>", repo_dir)
         file_str = file_str.replace("<<EXEC>>", executable)
         file_str = file_str.replace("<<JOB_SEED_OFFSET>>", str(cur_seed))
         file_str = file_str.replace("<<ACCOUNT_NAME>>", hpc_account)
@@ -251,8 +258,12 @@ def main():
         run_commands += "cp ${CONFIG_DIR}/environment_states/" + events_desc_arg + " ${RUN_DIR}/environment_states.csv\n"
         # Run avida
         run_commands += f'RUN_PARAMS="{run_params}"\n'
-        run_commands += 'echo "./${EXEC} ${RUN_PARAMS}" > cmd.log\n'
-        run_commands += './${EXEC} ${RUN_PARAMS} > run.log\n'
+
+        #####################################################################
+        # -- Commenting out the bits that actually run Avida
+        run_commands += '# echo "./${EXEC} ${RUN_PARAMS}" > cmd.log\n'
+        run_commands += '# ./${EXEC} ${RUN_PARAMS} > run.log\n'
+        #####################################################################
 
         file_str = file_str.replace("<<RUN_COMMANDS>>", run_commands)
 
@@ -261,8 +272,19 @@ def main():
         # ===================================================
         # Add commands to run avida analyze mode
         analysis_commands = ''
-        analysis_commands += f'RUN_PARAMS="{run_params}"\n'
-        analysis_commands += './${EXEC} ${RUN_PARAMS} -a\n'
+        # analysis_commands += f'RUN_PARAMS="{run_params}"\n' # Only include if analyze mode parameters don't match run paramters.
+
+        #####################################################################
+        # -- Commenting out the bits that actually run Avida
+        analysis_commands += '# ./${EXEC} ${RUN_PARAMS} -a\n'
+        #####################################################################
+
+        gen_1step_mutants_cmd = 'python scripts/gen-mutants.py --steps 1 --analysis_output mutants_step-1.dat --inst_set ${CONFIG_DIR}/instset-heads.cfg --input ${RUN_DIR}/data/analysis/final_dominant.dat --dump ${RUN_DIR} --avida_args "${RUN_PARAMS}" --num_tasks 6 --run_avida_analysis --run_dir ${RUN_DIR}'
+        gen_2step_mutants_cmd = 'python scripts/gen-mutants.py --steps 2 --analysis_output mutants_step-2.dat --inst_set ${CONFIG_DIR}/instset-heads.cfg --input ${RUN_DIR}/data/analysis/final_dominant.dat --dump ${RUN_DIR} --avida_args "${RUN_PARAMS}" --num_tasks 6 --run_avida_analysis --run_dir ${RUN_DIR}'
+        analysis_commands += "cd ${REPO_DIR}\n"
+        analysis_commands += gen_1step_mutants_cmd + "\n"
+        analysis_commands += "cd ${RUN_DIR}\n"
+
         file_str = file_str.replace("<<ANALYSIS_COMMANDS>>", analysis_commands)
 
         # ===================================================
