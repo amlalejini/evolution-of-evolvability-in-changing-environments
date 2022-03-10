@@ -35,6 +35,14 @@ Running on MSU's HPC
 
 ```
 module load CMake/3.18.4
-module load GCC/11.2.0
+module load GCCcore/11.2.0
+module load Python/3.9.6
 CXX="g++"
+source pyenv/bin/activate
+```
+
+or,
+
+```
+source load-hpc-env
 ```
