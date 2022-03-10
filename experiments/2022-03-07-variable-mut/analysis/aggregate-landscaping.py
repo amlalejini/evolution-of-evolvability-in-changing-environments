@@ -41,12 +41,16 @@ run_command_excludes = {}
 def main():
     parser = argparse.ArgumentParser(description="Aggregate mutation landscape data.")
     parser.add_argument("--data_dir", type=str, help="Where is the base output directory for each run?")
-
     parser.add_argument("--dump", type=str, help="Where to dump this?", default=".")
+    parser.add_argument("--mutant_file", type=str, default="mutants.dat", help="Name of the dat file that contains the mutants to analyze.")
+    parser.add_argument("--output_id", type=str, default="", help="This identifier will be appended to the end of output files.")
 
     args = parser.parse_args()
     data_dir = args.data_dir
     dump_dir = args.dump
+
+    mutant_file = args.mutant_file
+    output_id = args.output_id
 
     # Verify that the given data directory exits
     if not os.path.exists(data_dir):
@@ -64,7 +68,6 @@ def main():
     run_summary_header = None
     run_summary_content_lines = []
 
-    treatment_cooccurrence_summary_header = None
     treatment_cooccurrence_summary_info = {}      # {treatment_id: [{replicate_info}, {replicate_info}, ...]}
     treatment_id_cfg_map = {}
 
@@ -118,8 +121,7 @@ def main():
 
         ############################################################
         # Load 1-step mutants
-        mutant_data = utils.read_avida_dat_file(os.path.join(run_path, "data", "mutants_step-1.dat"))
-        # TODO: measure number of phenotypes, entropy
+        mutant_data = utils.read_avida_dat_file(os.path.join(run_path, "data", mutant_file))
         total_mutants = len(mutant_data)
         num_viable = 0
         viable_phenotypes = []
@@ -254,7 +256,8 @@ def main():
 
     ############################################################
     # Write out run summary data
-    with open(os.path.join(dump_dir, "lanscape_run_summary.csv"), "w") as fp:
+    fname = f"landscape_run_summary_{output_id}.csv" if output_id != "" else "landscape_run_summary.csv"
+    with open(os.path.join(dump_dir, fname), "w") as fp:
         out_content = ",".join(run_summary_header) + "\n" + "\n".join(run_summary_content_lines)
         fp.write(out_content)
     run_summary_content_lines = None
@@ -262,7 +265,8 @@ def main():
 
     ############################################################
     # Write out task co-occurrence data
-    with open(os.path.join(dump_dir, "landscape_task_cooccurrence.csv"), "w") as fp:
+    fname = f"landscape_task_cooccurrence_{output_id}.csv" if output_id != "" else "landscape_task_cooccurrence.csv"
+    with open(os.path.join(dump_dir, fname), "w") as fp:
         out_content = ",".join(task_cooccurrence_header) + "\n" + "\n".join(task_cooccurrence_content_lines)
         fp.write(out_content)
     task_cooccurrence_content_lines = None
@@ -309,7 +313,8 @@ def main():
                 exit(-1)
             treatment_summary_lines.append(",".join([str(info[field]) for field in treatment_summary_header]))
 
-    with open(os.path.join(dump_dir, "lanscape_task_cooccurrence_treatment_summary.csv"), "w") as fp:
+    fname = f"landscape_task_cooccurrence_treatment_summary_{output_id}.csv" if output_id != "" else "landscape_task_cooccurrence_treatment_summary.csv"
+    with open(os.path.join(dump_dir, fname), "w") as fp:
         out_content = ",".join(treatment_summary_header) + "\n" + "\n".join(treatment_summary_lines)
         fp.write(out_content)
     treatment_summary_lines = None
