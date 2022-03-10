@@ -146,6 +146,8 @@ def main():
             phenotype = "".join([str(int(mutant[task]) > 0) for task in tasks_primary])
             viable_phenotypes.append(phenotype)
 
+        mutant_data = None
+
         # Calculate probabilities of each task appearing in viable mutants.
         task_occurrence_probs = {task: (task_occurrence_counts[task] / num_viable) if num_viable > 0 else 0 for task in tasks_primary}
 

@@ -13,9 +13,9 @@ default_seed_offset = 2000
 default_account = "devolab"
 default_num_replicates = 30
 default_job_time_request = "120:00:00"
+default_job_mem_request = "4G"
 
 total_updates = 300000
-job_memory_request = "4G"
 job_name = "03-07"
 executable = "avida"
 
@@ -93,6 +93,7 @@ def main():
     parser.add_argument("--force_events_gen", action="store_true", help="Should we force events file generation even if files already exist?")
     parser.add_argument("--account", type=str, default=default_account, help="Value to use for the slurm ACCOUNT")
     parser.add_argument("--time_request", type=str, default=default_job_time_request, help="How long to request for each job on hpc?")
+    parser.add_argument("--mem", type=str, default=default_job_mem_request, help="How much memory to request for each job?")
 
     # Load in command line arguments
     args = parser.parse_args()
@@ -105,6 +106,7 @@ def main():
     seed_offset = args.seed_offset
     force_events_gen = args.force_events_gen
     job_time_request = args.time_request
+    job_memory_request = args.mem
 
     # Load in the base slurm file
     base_sub_script = ""

@@ -159,11 +159,11 @@ def main():
     if not os.path.exists(run_dir):
         print(f"Unable to find run_dir: {run_dir}")
 
-    avida_cmd = f"./avida {avida_args} -set VERBOSITY 0 -set ANALYZE_FILE {analyze_file_fpath} -a"
+    avida_cmd = f"./avida {avida_args} -set VERBOSITY 0 -set ANALYZE_FILE analyze_mutants.cfg -a > landscaping.log"
     print(f"Running mutants through Avida's analyze mode:")
     print(f" - Run directory: {run_dir}")
     print(f" - Avida run command: {avida_cmd}")
-    analyze_mode_cmd = f"cd {run_dir}; {avida_cmd}"
+    analyze_mode_cmd = f"cp {analyze_file_fpath} {run_dir}; cd {run_dir}; {avida_cmd}; rm analyze_mutants.cfg"
     subprocess.run(analyze_mode_cmd, shell=True)
 
     print("Done.")
