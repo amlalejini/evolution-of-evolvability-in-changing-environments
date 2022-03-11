@@ -15,4 +15,4 @@ DATA_DIR=${SCRATCH_EXP_DIR}/${EXP_SLUG}
 JOB_DIR=${SCRATCH_EXP_DIR}/${EXP_SLUG}/jobs
 CONFIG_DIR=${HOME_EXP_DIR}/${EXP_SLUG}/hpc/config
 
-python3 gen-sub.py --time_request ${JOB_TIME} --data_dir ${DATA_DIR} --config_dir ${CONFIG_DIR} --repo_dir ${REPO_DIR} --replicates ${REPLICATES} --job_dir ${JOB_DIR} --account ${ACCOUNT} --seed_offset ${SEED_OFFSET}
+python3 gen-sub.py --time_request ${JOB_TIME} --mem ${JOB_MEM} --data_dir ${DATA_DIR} --config_dir ${CONFIG_DIR} --repo_dir ${REPO_DIR} --replicates ${REPLICATES} --job_dir ${JOB_DIR} --account ${ACCOUNT} --seed_offset ${SEED_OFFSET}
