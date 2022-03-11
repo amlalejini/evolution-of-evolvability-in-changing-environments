@@ -164,7 +164,8 @@ def main():
         task_expectations = {pair:0 for pair in task_cooccurrence_probs}
         for pair in task_expectations:
             task_i, task_j = list(pair) if len(pair) > 1 else (list(pair)[0], list(pair)[0])
-            denom = task_occurrence_probs[task_i] * task_occurrence_probs[task_j]
+            # If task_i == task_j, don't multiply probabilities together
+            denom = task_occurrence_probs[task_i] * task_occurrence_probs[task_j] if len(pair) > 1 else task_occurrence_probs[task_i]
             task_expectations[pair] = task_cooccurrence_probs[pair] / denom if denom != 0 else 0
             if task_expectations[pair] != 0:
                 task_expectations[pair] = math.log(task_expectations[pair], 2)
@@ -179,8 +180,8 @@ def main():
         viable_phenotypes_entropy = entropy(viable_phenotypes_counts, base=2)
 
         # print(f"  Viability: {num_viable}/{total_mutants}")
-        print(f"  Num phenotypes: {num_unique_viable_phenotypes}")
-        print(f"  Entropy of phenotypes: {viable_phenotypes_entropy}")
+        # print(f"  Num phenotypes: {num_unique_viable_phenotypes}")
+        # print(f"  Entropy of phenotypes: {viable_phenotypes_entropy}")
         # print(f"  Task occurrences: {task_occurrence_counts}")
         # print(f"  Task probabilities: {task_occurrence_probs}")
         # print(f"  Task co-occurrences: {task_cooccurrence_counts}")
