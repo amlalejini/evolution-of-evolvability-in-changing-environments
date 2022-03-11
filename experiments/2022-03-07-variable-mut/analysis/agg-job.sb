@@ -30,11 +30,11 @@ source load-hpc-env
 cd ${ANALYSIS_DIR}
 
 # Aggregate data
-# python3 aggregate.py --data_dir ${DATA_DIR} --dump ./dump/ --update ${UPDATE} --time_series_range ${TS_RANGE_0} ${TS_RANGE_1}
+python aggregate.py --data_dir ${DATA_DIR} --dump ./dump/ --update ${UPDATE} --time_series_range ${TS_RANGE_0} ${TS_RANGE_1}
 
 # Aggregate landscape data on 1-step mutants
 python aggregate-landscaping.py --data_dir ${DATA_DIR} --dump ./dump/ --mutant_file ${MUTANT_1STEP_FILE} --output_id step-1
 
 # Aggregate landscape data on 2-step mutants
-# python aggregate-landscaping.py --data_dir ${DATA_DIR} --dump ./dump/ --mutant_file ${MUTANT_2STEP_FILE} --output_id step-2
+python aggregate-landscaping.py --data_dir ${DATA_DIR} --dump ./dump/ --mutant_file ${MUTANT_2STEP_FILE} --output_id step-2
 
