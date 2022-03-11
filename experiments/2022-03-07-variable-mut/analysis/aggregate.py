@@ -95,10 +95,16 @@ def main():
         cmd_params = utils.extract_params_cmd_log(cmd_log_path)
 
         # Infer environment parameterization from event file name.
-        env_cond = cmd_params["EVENT_FILE"].strip(".cfg").replace("events_", "").lower()
+        env_id = cmd_params["EVENT_FILE"].strip(".cfg").replace("events_", "").lower()
+        env_cfg = {pair.split("-")[0]:pair.split("-")[1] for pair in env_id.split("_") if not "run-" in pair}
+        env_cfg_fields = sorted(list(env_cfg.keys()))
+        env_condition = "_".join([f"{field}-{env_cfg[field]}" for field in env_cfg_fields])
+        env_type = env_cfg["env"]
+        env_chg_rate = env_cfg["rate"] if "rate" in env_cfg else "none"
 
-        summary_info["env_cond"] = env_cond
-        summary_info["update"] = update
+        summary_info["env_condition"] = env_condition
+        summary_info["env_type"] = env_type
+        summary_info["env_chg_rate"] = env_chg_rate
 
         for field in cmd_params:
             summary_info[field] = cmd_params[field]
@@ -298,7 +304,9 @@ def main():
             time_series_info[u]["RANDOM_SEED"] = summary_info["RANDOM_SEED"]
             time_series_info[u]["MAX_HEAD_COPY_COST"] = summary_info["MAX_HEAD_COPY_COST"]
             time_series_info[u]["COPY_MUT_PROB"] = summary_info["COPY_MUT_PROB"]
-            time_series_info[u]["env_cond"] = summary_info["env_cond"]
+            time_series_info[u]["env_condition"] = summary_info["env_condition"]
+            time_series_info[u]["env_type"] = summary_info["env_type"]
+            time_series_info[u]["env_chg_rate"] = summary_info["env_chg_rate"]
 
         # Compute time series header from time_series_info
         time_series_fields = list(time_series_info[str(time_series_range[0])].keys())
