@@ -404,7 +404,7 @@ ggsave(
 ### 2-step mutants
 
 ```{r}
-
+limit <- max(abs(ls2_cooccur_data$cooccur_expectation_avg)) * c(-1, 1)
 ggplot(
     ls2_cooccur_data,
     aes(
@@ -415,41 +415,22 @@ ggplot(
   ) +
   geom_tile() +
   scale_fill_distiller(
-    palette = "RdBu"
+    palette = "RdBu",
+    limits=limit
     # limits=c(-10, 10)
   ) +
   facet_grid(
     env_condition~COPY_MUT_PROB
   ) +
+  ggtitle("Two-step Mutants") +
   theme(
     legend.position="bottom",
+    strip.text.y=element_text(size=10),
+    legend.key.width=unit(3, "cm")
   )
 ggsave(
-  paste0(working_directory, "plots/", "matrices_step-2.pdf")
+  paste0(working_directory, "plots/", "matrices_step-2.pdf"),
+  height=15,
+  width=12
 )
-
-# envs <- ls2_cooccur_data$env_condition
-# for (env in envs) {
-#   temp_data <- filter(ls2_cooccur_data, COPY_MUT_PROB=="0.001" & env_condition==env)
-#   ggplot(
-#       temp_data,
-#       aes(
-#         x=task_1_id,
-#         y=task_2_id,
-#         fill=cooccur_expectation_avg
-#       )
-#     ) +
-#     geom_tile() +
-#     scale_fill_distiller(
-#       palette = "RdBu",
-#       limits=c(-10, 10)
-#     ) +
-#     theme(
-#       legend.position="bottom",
-#     )
-
-#   ggsave(
-#     paste0(working_directory, "plots/", "matrix_", env, "_001.pdf")
-#   )
-# }
 ```

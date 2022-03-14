@@ -156,3 +156,42 @@ ggsave(
   height=10
 )
 ```
+
+## Fitness over time
+
+```{r}
+ggplot(
+    # time_series_data,
+    filter(time_series_data, update>250000),
+    aes(
+      x=update,
+      y=avg_fitness,
+      fill=env_condition,
+      color=env_condition
+    )
+  ) +
+  stat_summary(geom="line", fun=mean) +
+  stat_summary(
+    geom="ribbon",
+    fun.data="mean_cl_boot",
+    fun.args=list(conf.int=0.95),
+    alpha=0.2,
+    linetype=0
+  ) +
+  scale_y_continuous(
+    # trans=pseudo_log_trans(sigma=1,base=10)
+    trans=log10_trans()
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type
+  ) +
+  theme(
+    legend.position="bottom"
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "average_fitness_ot.pdf"),
+  width=18,
+  height=10
+)
+```
