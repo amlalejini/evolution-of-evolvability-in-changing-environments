@@ -40,8 +40,7 @@ cd ${RUN_DIR}
 <<ANALYSIS_COMMANDS>>
 
 ######## Clean up ########
-
-mv *.csv ./data/
+rm ${RUN_DIR}/*.csv
 rm ${RUN_DIR}/*.cfg
 rm ${RUN_DIR}/*.org
 #rm ${RUN_DIR}/*.py

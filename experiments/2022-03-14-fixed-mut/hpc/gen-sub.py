@@ -269,6 +269,7 @@ def main():
         # The bits that actually run Avida
         run_commands += 'echo "./${EXEC} ${RUN_PARAMS}" > cmd.log\n'
         run_commands += './${EXEC} ${RUN_PARAMS} > run.log\n'
+        run_commands += 'mv ./*.csv ./data/ \n'
         #####################################################################
 
         file_str = file_str.replace("<<RUN_COMMANDS>>", run_commands)
