@@ -365,6 +365,8 @@ public:
   CONFIG_ADD_VAR(META_COPY_MUT, double, 0.0, "Prob. of copy mutation rate changing (per gen)");
   CONFIG_ADD_VAR(META_STD_DEV, double, 0.0, "Standard deviation of meta mutation size.");
   CONFIG_ADD_VAR(MUT_RATE_SOURCE, int, 1, "1 = Mutation rates determined by environment.\n2 = Mutation rates inherited from parent.");
+  CONFIG_ADD_VAR(COSTLY_HEAD_COPY, int, 0, "Are h-copy instructions costly to execute?");
+  CONFIG_ADD_VAR(MAX_HEAD_COPY_COST, double, 0.01, "What is the max cost for costly h-copy executions?");
 
 
   // -------- Birth and Death config options --------

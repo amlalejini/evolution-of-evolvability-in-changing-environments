@@ -397,6 +397,7 @@ tInstLib<cHardwareCPU::tMethod>* cHardwareCPU::initInstLib(void)
     tInstLibEntry<tMethod>("h-copy8", &cHardwareCPU::Inst_HeadCopy8),
     tInstLibEntry<tMethod>("h-copy9", &cHardwareCPU::Inst_HeadCopy9),
     tInstLibEntry<tMethod>("h-copy10", &cHardwareCPU::Inst_HeadCopy10),
+    tInstLibEntry<tMethod>("h-copy-costly", &cHardwareCPU::Inst_HeadCopyCostly, INST_CLASS_LIFECYCLE, nInstFlag::DEFAULT, "Copy from read-head to write-head; advance both. Apply cost based on current mutation rate."),
 
     tInstLibEntry<tMethod>("divide-sex", &cHardwareCPU::Inst_HeadDivideSex, INST_CLASS_LIFECYCLE, nInstFlag::STALL),
     tInstLibEntry<tMethod>("divide-asex", &cHardwareCPU::Inst_HeadDivideAsex, INST_CLASS_LIFECYCLE, nInstFlag::STALL),
@@ -7209,6 +7210,11 @@ bool cHardwareCPU::Inst_HeadWrite(cAvidaContext& ctx)
 
 bool cHardwareCPU::Inst_HeadCopy(cAvidaContext& ctx)
 {
+
+  if (m_world->GetConfig().COSTLY_HEAD_COPY.Get()) {
+    return Inst_HeadCopyCostly(ctx);
+  }
+
   // For the moment, this cannot be nop-modified.
   cHeadCPU& read_head = getHead(nHardware::HEAD_READ);
   cHeadCPU& write_head = getHead(nHardware::HEAD_WRITE);
@@ -7243,6 +7249,58 @@ bool cHardwareCPU::Inst_HeadCopy(cAvidaContext& ctx)
 
   read_head.Advance();
   write_head.Advance();
+  return true;
+}
+
+/// Same as Inst_HeadCopy, but apply a cost to merit based on current mutation rate.
+/// The lower the mutation rate, the higher the cost.
+bool cHardwareCPU::Inst_HeadCopyCostly(cAvidaContext& ctx)
+{
+  // For the moment, this cannot be nop-modified.
+  cHeadCPU& read_head = getHead(nHardware::HEAD_READ);
+  cHeadCPU& write_head = getHead(nHardware::HEAD_WRITE);
+
+  read_head.Adjust();
+  write_head.Adjust();
+
+  // Do mutations.
+  Instruction read_inst = read_head.GetInst();
+  ReadInst(read_inst.GetOp());
+
+  //checkNoMutList is for head to head kaboom experiments
+  if (m_organism->TestCopyMut(ctx) && !(checkNoMutList(read_head))) {
+    read_inst = m_inst_set->GetRandomInst(ctx);
+    write_head.SetFlagMutated();
+    write_head.SetFlagCopyMut();
+  }
+
+  write_head.SetInst(read_inst);
+  write_head.SetFlagCopied();  // Set the copied flag...
+
+  if (m_organism->TestCopyIns(ctx)) write_head.InsertInst(m_inst_set->GetRandomInst(ctx));
+  if (m_organism->TestCopyDel(ctx)) write_head.RemoveInst();
+  if (m_organism->TestCopyUniform(ctx)) doUniformCopyMutation(ctx, write_head);
+  if (m_organism->TestCopySlip(ctx)) {
+    if (m_slip_read_head) {
+      read_head.Set(ctx.GetRandom().GetInt(m_memory.GetSize()));
+    } else {
+      doSlipMutation(ctx, m_memory, write_head.GetPosition());
+    }
+  }
+
+  read_head.Advance();
+  write_head.Advance();
+
+  // Apply costs (currently hacked in!)
+  constexpr double min_rate = 0.000001;
+  constexpr double max_rate = 1.0;
+  const double max_modifier = pow(2, abs(log10(min_rate))); // Use minimum rate to calculate maximum cost.
+  const double mut_rate = std::clamp(m_organism->GetCopyMutProb(), min_rate, max_rate);
+  const double max_cost = m_world->GetConfig().MAX_HEAD_COPY_COST.Get();
+  const double cost = std::clamp((pow(2, abs(log10(mut_rate))) / max_modifier) * max_cost, 0.0, max_cost);
+  const double new_bonus = m_organism->GetPhenotype().GetCurBonus() * (1-cost);
+  m_organism->GetPhenotype().SetCurBonus(new_bonus);
+  // std::cout << "m=" << mut_rate << "; c=" << cost << "; max_mod=" << max_modifier << "; " << pow(2, abs(log10(mut_rate))) << std::endl;
   return true;
 }
 

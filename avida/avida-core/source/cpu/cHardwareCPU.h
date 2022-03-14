@@ -686,6 +686,8 @@ private:
   bool Inst_HeadCopy9(cAvidaContext& ctx);
   bool Inst_HeadCopy10(cAvidaContext& ctx);
 
+  bool Inst_HeadCopyCostly(cAvidaContext& ctx);
+
   bool Inst_HeadDivideSex(cAvidaContext& ctx);
   bool Inst_HeadDivideAsex(cAvidaContext& ctx);
   bool Inst_HeadDivideAsexWait(cAvidaContext& ctx);
