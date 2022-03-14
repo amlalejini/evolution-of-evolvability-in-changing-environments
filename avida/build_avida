@@ -2,7 +2,6 @@
 
 # git submodule update --init --recursive
 
-# cd avida
 mkdir -p cbuild
 cd cbuild
 cmake -DCMAKE_BUILD_TYPE=Release "$@" ../
