@@ -54,8 +54,6 @@
 #include <climits>
 #include <fstream>
 #include <cmath>
-#include <algorithm>
-#include <iostream>
 
 using namespace std;
 using namespace Avida;
@@ -256,6 +254,16 @@ tInstLib<cHardwareCPU::tMethod>* cHardwareCPU::initInstLib(void)
     tInstLibEntry<tMethod>("sense-faced-resource1", &cHardwareCPU::Inst_SenseFacedResource1, INST_CLASS_ENVIRONMENT, nInstFlag::STALL),
     tInstLibEntry<tMethod>("sense-faced-resource2", &cHardwareCPU::Inst_SenseFacedResource2, INST_CLASS_ENVIRONMENT, nInstFlag::STALL),
 
+    tInstLibEntry<tMethod>("sense-react-NAND", &cHardwareCPU::Inst_SenseReactNAND, INST_CLASS_ENVIRONMENT, nInstFlag::STALL, "If NAND reaction exists, sense whether or not it is being rewarded, punished, or neither."),
+    tInstLibEntry<tMethod>("sense-react-NOT", &cHardwareCPU::Inst_SenseReactNOT, INST_CLASS_ENVIRONMENT, nInstFlag::STALL, "If NOT reaction exists, sense whether or not it is being rewarded, punished, or neither."),
+    tInstLibEntry<tMethod>("sense-react-AND", &cHardwareCPU::Inst_SenseReactAND, INST_CLASS_ENVIRONMENT, nInstFlag::STALL, "If AND reaction exists, sense whether or not it is being rewarded, punished, or neither."),
+    tInstLibEntry<tMethod>("sense-react-ORN", &cHardwareCPU::Inst_SenseReactORN, INST_CLASS_ENVIRONMENT, nInstFlag::STALL, "If ORN reaction exists, sense whether or not it is being rewarded, punished, or neither."),
+    tInstLibEntry<tMethod>("sense-react-OR", &cHardwareCPU::Inst_SenseReactOR, INST_CLASS_ENVIRONMENT, nInstFlag::STALL, "If OR reaction exists, sense whether or not it is being rewarded, punished, or neither."),
+    tInstLibEntry<tMethod>("sense-react-ANDN", &cHardwareCPU::Inst_SenseReactANDN, INST_CLASS_ENVIRONMENT, nInstFlag::STALL, "If ANDN reaction exists, sense whether or not it is being rewarded, punished, or neither."),
+    tInstLibEntry<tMethod>("sense-react-NOR", &cHardwareCPU::Inst_SenseReactNOR, INST_CLASS_ENVIRONMENT, nInstFlag::STALL, "If NOR reaction exists, sense whether or not it is being rewarded, punished, or neither."),
+    tInstLibEntry<tMethod>("sense-react-XOR", &cHardwareCPU::Inst_SenseReactXOR, INST_CLASS_ENVIRONMENT, nInstFlag::STALL, "If XOR reaction exists, sense whether or not it is being rewarded, punished, or neither."),
+    tInstLibEntry<tMethod>("sense-react-EQU", &cHardwareCPU::Inst_SenseReactEQU, INST_CLASS_ENVIRONMENT, nInstFlag::STALL, "If EQU reaction exists, sense whether or not it is being rewarded, punished, or neither."),
+
     tInstLibEntry<tMethod>("if-resources", &cHardwareCPU::Inst_IfResources, INST_CLASS_CONDITIONAL, nInstFlag::STALL),
     tInstLibEntry<tMethod>("collect", &cHardwareCPU::Inst_Collect, INST_CLASS_ENVIRONMENT, nInstFlag::STALL),
     tInstLibEntry<tMethod>("collect-no-env-remove", &cHardwareCPU::Inst_CollectNoEnvRemove, INST_CLASS_ENVIRONMENT, nInstFlag::STALL),
@@ -389,7 +397,6 @@ tInstLib<cHardwareCPU::tMethod>* cHardwareCPU::initInstLib(void)
     tInstLibEntry<tMethod>("h-copy8", &cHardwareCPU::Inst_HeadCopy8),
     tInstLibEntry<tMethod>("h-copy9", &cHardwareCPU::Inst_HeadCopy9),
     tInstLibEntry<tMethod>("h-copy10", &cHardwareCPU::Inst_HeadCopy10),
-    tInstLibEntry<tMethod>("h-copy-costly", &cHardwareCPU::Inst_HeadCopyCostly, INST_CLASS_LIFECYCLE, nInstFlag::DEFAULT, "Copy from read-head to write-head; advance both. Apply cost based on current mutation rate."),
 
     tInstLibEntry<tMethod>("divide-sex", &cHardwareCPU::Inst_HeadDivideSex, INST_CLASS_LIFECYCLE, nInstFlag::STALL),
     tInstLibEntry<tMethod>("divide-asex", &cHardwareCPU::Inst_HeadDivideAsex, INST_CLASS_LIFECYCLE, nInstFlag::STALL),
@@ -4561,6 +4568,76 @@ bool cHardwareCPU::Inst_SenseFacedHabitat(cAvidaContext& ctx)
   return true;
 }
 
+////////////////////////////////////////
+// --- REACTION SENSOR INSTRUCTIONS ---
+////////////////////////////////////////
+/* DoSenseReact
+  Given the name of a reaction, push feedback to avida cpu stack according to the following rule:
+   - Push(-1) if current reaction value < REACTION_SENSORS_NEUTRAL
+   - Push(1) if current reaction value > REACTION_SENSORS_NEUTRAL
+   - Push(0) if current reaction value == REACTION_SENSORS_NEUTRAL
+*/
+bool cHardwareCPU::DoSenseReact(cAvidaContext& ctx, const cString& reaction_name)
+{
+  // If reaction sensors are disabled, bail (NOP out).
+  if (m_world->GetConfig().DISABLE_REACTION_SENSORS.Get()) return true;
+  // What reaction value is considered neutral?
+  const double neutral_val = m_world->GetConfig().REACTION_SENSORS_NEUTRAL.Get();
+
+  const cReactionLib & reaction_lib = m_world->GetEnvironment().GetReactionLib();
+  cReaction* reaction = reaction_lib.GetReaction(reaction_name);
+
+  if (reaction == NULL) return true;  // Reaction doesn't exist.
+
+  const double val = reaction->GetValue();
+  if (val < neutral_val) {
+    StackPush(-1);
+  } else if (val > neutral_val) {
+    StackPush(1);
+  } else {
+    StackPush(0);
+  }
+  return true;
+}
+
+bool cHardwareCPU::Inst_SenseReactNAND(cAvidaContext& ctx)
+{
+  return DoSenseReact(ctx, "NAND");
+}
+bool cHardwareCPU::Inst_SenseReactNOT(cAvidaContext& ctx)
+{
+  return DoSenseReact(ctx, "NOT");
+}
+bool cHardwareCPU::Inst_SenseReactAND(cAvidaContext& ctx)
+{
+  return DoSenseReact(ctx, "AND");
+}
+bool cHardwareCPU::Inst_SenseReactORN(cAvidaContext& ctx)
+{
+  return DoSenseReact(ctx, "ORN");
+}
+bool cHardwareCPU::Inst_SenseReactOR(cAvidaContext& ctx)
+{
+  return DoSenseReact(ctx, "OR");
+}
+bool cHardwareCPU::Inst_SenseReactANDN(cAvidaContext& ctx)
+{
+  return DoSenseReact(ctx, "ANDN");
+}
+bool cHardwareCPU::Inst_SenseReactNOR(cAvidaContext& ctx)
+{
+  return DoSenseReact(ctx, "NOR");
+}
+bool cHardwareCPU::Inst_SenseReactXOR(cAvidaContext& ctx)
+{
+  return DoSenseReact(ctx, "XOR");
+}
+bool cHardwareCPU::Inst_SenseReactEQU(cAvidaContext& ctx)
+{
+  return DoSenseReact(ctx, "EQU");
+}
+
+
 /* Convert modifying NOPs to the index of a resource.
  *
  * When the specification does not map to exactly one resource (either because the
@@ -7132,11 +7209,6 @@ bool cHardwareCPU::Inst_HeadWrite(cAvidaContext& ctx)
 
 bool cHardwareCPU::Inst_HeadCopy(cAvidaContext& ctx)
 {
-
-  if (m_world->GetConfig().COSTLY_HEAD_COPY.Get()) {
-    return Inst_HeadCopyCostly(ctx);
-  }
-
   // For the moment, this cannot be nop-modified.
   cHeadCPU& read_head = getHead(nHardware::HEAD_READ);
   cHeadCPU& write_head = getHead(nHardware::HEAD_WRITE);
@@ -7171,58 +7243,6 @@ bool cHardwareCPU::Inst_HeadCopy(cAvidaContext& ctx)
 
   read_head.Advance();
   write_head.Advance();
-  return true;
-}
-
-/// Same as Inst_HeadCopy, but apply a cost to merit based on current mutation rate.
-/// The lower the mutation rate, the higher the cost.
-bool cHardwareCPU::Inst_HeadCopyCostly(cAvidaContext& ctx)
-{
-  // For the moment, this cannot be nop-modified.
-  cHeadCPU& read_head = getHead(nHardware::HEAD_READ);
-  cHeadCPU& write_head = getHead(nHardware::HEAD_WRITE);
-
-  read_head.Adjust();
-  write_head.Adjust();
-
-  // Do mutations.
-  Instruction read_inst = read_head.GetInst();
-  ReadInst(read_inst.GetOp());
-
-  //checkNoMutList is for head to head kaboom experiments
-  if (m_organism->TestCopyMut(ctx) && !(checkNoMutList(read_head))) {
-    read_inst = m_inst_set->GetRandomInst(ctx);
-    write_head.SetFlagMutated();
-    write_head.SetFlagCopyMut();
-  }
-
-  write_head.SetInst(read_inst);
-  write_head.SetFlagCopied();  // Set the copied flag...
-
-  if (m_organism->TestCopyIns(ctx)) write_head.InsertInst(m_inst_set->GetRandomInst(ctx));
-  if (m_organism->TestCopyDel(ctx)) write_head.RemoveInst();
-  if (m_organism->TestCopyUniform(ctx)) doUniformCopyMutation(ctx, write_head);
-  if (m_organism->TestCopySlip(ctx)) {
-    if (m_slip_read_head) {
-      read_head.Set(ctx.GetRandom().GetInt(m_memory.GetSize()));
-    } else {
-      doSlipMutation(ctx, m_memory, write_head.GetPosition());
-    }
-  }
-
-  read_head.Advance();
-  write_head.Advance();
-
-  // Apply costs (currently hacked in!)
-  constexpr double min_rate = 0.000001;
-  constexpr double max_rate = 1.0;
-  const double max_modifier = pow(2, abs(log10(min_rate))); // Use minimum rate to calculate maximum cost.
-  const double mut_rate = std::clamp(m_organism->GetCopyMutProb(), min_rate, max_rate);
-  const double max_cost = m_world->GetConfig().MAX_HEAD_COPY_COST.Get();
-  const double cost = std::clamp((pow(2, abs(log10(mut_rate))) / max_modifier) * max_cost, 0.0, max_cost);
-  const double new_bonus = m_organism->GetPhenotype().GetCurBonus() * (1-cost);
-  m_organism->GetPhenotype().SetCurBonus(new_bonus);
-  // std::cout << "m=" << mut_rate << "; c=" << cost << "; max_mod=" << max_modifier << "; " << pow(2, abs(log10(mut_rate))) << std::endl;
   return true;
 }
 

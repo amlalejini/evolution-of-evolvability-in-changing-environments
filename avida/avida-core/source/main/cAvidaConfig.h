@@ -284,7 +284,12 @@ public:
   CONFIG_ADD_VAR(SPECULATIVE, bool, 1, "Enable speculative execution\n(pre-execute instructions that don't affect other organisms)");
   CONFIG_ADD_VAR(POPULATION_CAP, int, 0, "Carrying capacity in number of organisms (use 0 for no cap)");
   CONFIG_ADD_VAR(POP_CAP_ELDEST, int, 0, "Carrying capacity in number of organisms (use 0 for no cap). Will kill oldest organism in population, but still use birth method to place new offspring.");
-
+  CONFIG_ADD_VAR(FILTER_TIME, int, 10000, "How long does a lineage need to survive to pass the coalesence filter?");
+  CONFIG_ADD_VAR(OEE_RES, int, 1000, "How often should we print OEE stats?");
+  CONFIG_ADD_VAR(PHYLOGENY_SNAPSHOT_RES, int, 1000, "How often should we print phylogeny stats?");
+  CONFIG_ADD_VAR(SYSTEMATICS_RES, int, 1000, "How often should we print phylodiversity stats?");
+  CONFIG_ADD_VAR(SYSTEMATICS_TRACK_ALL, bool, false, "If false, prune phylogeny; otherwise, track all genotypes over time.");
+  CONFIG_ADD_VAR(FORCE_MRCA_COMP, bool, false, "Force MRCA to be recalculated every update?");
 
   // -------- Topology config options --------
   CONFIG_ADD_GROUP(TOPOLOGY_GROUP, "World topology");
@@ -361,8 +366,6 @@ public:
   CONFIG_ADD_VAR(META_STD_DEV, double, 0.0, "Standard deviation of meta mutation size.");
   CONFIG_ADD_VAR(MUT_RATE_SOURCE, int, 1, "1 = Mutation rates determined by environment.\n2 = Mutation rates inherited from parent.");
 
-  CONFIG_ADD_VAR(COSTLY_HEAD_COPY, int, 0, "Are h-copy instructions costly to execute?");
-  CONFIG_ADD_VAR(MAX_HEAD_COPY_COST, double, 0.01, "What is the max cost for costly h-copy executions?");
 
   // -------- Birth and Death config options --------
   CONFIG_ADD_GROUP(REPRODUCTION_GROUP, "Birth and Death config options");
@@ -873,6 +876,10 @@ public:
   CONFIG_ADD_VAR(RES_FOR_DEME_REP, int, 0, "The amount of resources that must be consumed prior to automatic deme replication");
   CONFIG_ADD_VAR(LEARNING_COUNT, int, 0, "The number of times a task must be performed to avoid efficiency penalties");
 
+  // --------- Reaction Sensing --------------------
+  CONFIG_ADD_GROUP(REACTION_SENSING_GROUP, "Reaction Sensing Settings");
+  CONFIG_ADD_VAR(DISABLE_REACTION_SENSORS, bool, 0, "Set to disable reaction-sensing instructions (they will act as NOP instructions).");
+  CONFIG_ADD_VAR(REACTION_SENSORS_NEUTRAL, double, 0.0, "What is the neutral, '0', value for reaction sensors? Reaction values higher than neutral result in '1', lower result in '-1', neutral value results in '0'.");
 
   // -------- DEPRECATED ---------
   CONFIG_ADD_GROUP(DEPRECATED_GROUP, "DEPRECATED (New functionality listed in comments)");

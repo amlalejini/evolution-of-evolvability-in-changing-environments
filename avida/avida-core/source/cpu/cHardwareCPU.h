@@ -527,6 +527,18 @@ private:
   bool Inst_SenseDiffFaced(cAvidaContext& ctx);
   bool Inst_SenseFacedHabitat(cAvidaContext& ctx);
 
+  // Reaction-specific sensors. NOP behavior if reaction does not exist.
+  bool DoSenseReact(cAvidaContext& ctx, const cString & reaction_name);
+  bool Inst_SenseReactNAND(cAvidaContext& ctx);
+  bool Inst_SenseReactNOT(cAvidaContext& ctx);
+  bool Inst_SenseReactAND(cAvidaContext& ctx);
+  bool Inst_SenseReactORN(cAvidaContext& ctx);
+  bool Inst_SenseReactOR(cAvidaContext& ctx);
+  bool Inst_SenseReactANDN(cAvidaContext& ctx);
+  bool Inst_SenseReactNOR(cAvidaContext& ctx);
+  bool Inst_SenseReactXOR(cAvidaContext& ctx);
+  bool Inst_SenseReactEQU(cAvidaContext& ctx);
+
   // Resources
   int FindModifiedResource(cAvidaContext& ctx, int& spec_id);
   bool DoCollect(cAvidaContext& ctx, bool env_remove, bool internal_add, bool probabilistic, bool unit, float nUnits);
@@ -673,8 +685,6 @@ private:
   bool Inst_HeadCopy8(cAvidaContext& ctx);
   bool Inst_HeadCopy9(cAvidaContext& ctx);
   bool Inst_HeadCopy10(cAvidaContext& ctx);
-
-  bool Inst_HeadCopyCostly(cAvidaContext& ctx);
 
   bool Inst_HeadDivideSex(cAvidaContext& ctx);
   bool Inst_HeadDivideAsex(cAvidaContext& ctx);
@@ -1133,5 +1143,3 @@ inline void cHardwareCPU::SwitchStack()
 }
 
 #endif
-
-
