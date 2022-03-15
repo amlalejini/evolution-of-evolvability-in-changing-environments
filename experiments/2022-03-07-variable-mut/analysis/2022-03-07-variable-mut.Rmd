@@ -161,8 +161,8 @@ ggsave(
 
 ```{r}
 ggplot(
-    # time_series_data,
-    filter(time_series_data, update>250000),
+    time_series_data,
+    # filter(time_series_data, update>250000),
     aes(
       x=update,
       y=avg_fitness,
