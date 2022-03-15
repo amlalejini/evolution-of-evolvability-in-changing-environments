@@ -20,8 +20,7 @@ This repository contains the version of Avida that we used to run our experiment
 From a fresh clone of this repository, first you'll need to init and update the git submodules:
 
 ```
-git submodule init
-git submodule update
+git submodule update --init --recursive
 ```
 
 Next, you should be able to run the `build_avida` script:
