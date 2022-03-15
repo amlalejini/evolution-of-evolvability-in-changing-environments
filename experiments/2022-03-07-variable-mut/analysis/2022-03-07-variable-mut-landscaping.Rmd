@@ -321,7 +321,9 @@ ggsave(
 )
 ```
 
-## Entropy of unique 1-step phenotypes
+## Entropy of phenotypes
+
+### 1-step mutants
 
 ```{r}
 ggplot(
@@ -365,6 +367,53 @@ ggplot(
 
 ggsave(
   paste0(working_directory, "plots/", "entropy-phenotypes-one-step-mutants.pdf")
+)
+```
+
+### 2-step mutants
+
+```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_condition,
+      y=entropy_viable_phenotypes,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  facet_wrap(
+    ~COPY_MUT_PROB
+  ) +
+  theme(
+    legend.position="none",
+    axis.text.x = element_text(angle = 90),
+    panel.border = element_rect(color = "grey", fill=NA, size=2)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "entropy-phenotypes-two-step-mutants.pdf")
 )
 ```
 
