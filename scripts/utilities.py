@@ -78,6 +78,27 @@ def read_avida_dat_file(path, backfill_missing_fields=False):
         data.append({field:value for field,value in zip(fields, data_line)})
     return data
 
+def read_avida_inst_set_file(inst_set_fpath):
+    """
+    Reads an avida instruction set file.
+    Returns the mapping from instruction name to abbreviation (used in Avida genome sequence output).
+    """
+    content = None
+    with open(inst_set_fpath, "r") as fp:
+        content = fp.read().strip().split("\n")
+    instructions = []
+    char_lookup = []
+    for line in content:
+        line = line.strip()
+        if line[:4] == "INST" and (not line.startswith("INSTSET")):
+            instructions.append(line.split(" ")[1])
+    for i in range(0, len(instructions)):
+        if i < 26:
+            char_lookup.append(chr(ord('a')+i))
+        else:
+            char_lookup.append(chr(ord('A')+(i-26)))
+    return {inst:c for inst,c in zip(instructions, char_lookup)}
+
 def read_csv(file_path):
     """
     Reads a csv, return contents as a list of dictionaries where each dictionary is a row in the csv that is indexed by column names.
