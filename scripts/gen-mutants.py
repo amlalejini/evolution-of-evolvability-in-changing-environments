@@ -1,5 +1,6 @@
 import argparse, os, errno, subprocess
 import GenomeManipulator as gm
+import utilities as utils
 
 base_mutant_analyze_script = """
 PURGE_BATCH
@@ -11,62 +12,6 @@ RECALC
 DETAIL <<OUTPUT_FNAME>> <<DETAIL_ARGS>>
 """
 mutant_detail_args = ["sequence", "viable"] # Ask for this info + tasks
-
-def mkdir_p(path):
-    try:
-        os.makedirs(path)
-    except OSError as exc: # Python >2.5
-        if exc.errno == errno.EEXIST and os.path.isdir(path):
-            pass
-        else: raise
-
-def read_avida_dat_file(path, backfill_missing_fields=False):
-    content = None
-    with open(path, "r") as fp:
-        content = fp.read().strip().split("\n")
-    legend_start = 0
-    legend_end = 0
-    # Where does the legend table start?
-    for line_i in range(0, len(content)):
-        line = content[line_i].strip()
-        if line == "# Legend:":         # Handles analyze mode detail files.
-            legend_start = line_i + 1
-            break
-        if "#  1:" in line:             # Handles time.dat, mutation_rate.dat, etc.
-            legend_start = line_i
-            break
-    # For each line in legend table, extract field
-    fields = []
-    for line_i in range(legend_start, len(content)):
-        line = content[line_i].strip()
-        if line == "":
-            legend_end = line_i
-            break
-        # patch 3-input logic tasks because avida file format is nonsense
-        if "Logic 3" in line:
-            line = line.split("(")[0]
-
-        fields.append( line.split(":")[-1].strip().lower().replace(" ", "_") )
-    data = []
-    for line_i in range(legend_end, len(content)):
-        line = content[line_i].strip()
-        if line == "": continue
-        data_line = line.split(" ")
-        if len(data_line) > len(fields):
-            print("found more items than there are fields!")
-            print(fields)
-            print(data_line)
-            exit(-1)
-        elif backfill_missing_fields:
-            num_backfill = len(fields) - len(data_line)
-            for _ in range(num_backfill): data_line.append("")
-        elif len(data_line) != len(fields):
-            print("data fields mismatch!")
-            print(fields)
-            print(data_line)
-            exit(-1)
-        data.append({field:value for field,value in zip(fields, data_line)})
-    return data
 
 def main():
     parser = argparse.ArgumentParser(
@@ -106,14 +51,14 @@ def main():
         exit(-1)
 
     # Create the dump directory if it doesn't already exist.
-    mkdir_p(dump_dir)
+    utils.mkdir_p(dump_dir)
     mutant_detail_fpath = os.path.join(dump_dir, analysis_output_fname)
 
     # Create a genome manipulator to do the landscaping
     manipulator = gm.GenomeManipulator(inst_set_fpath)
 
     # Read input file
-    data = read_avida_dat_file(input_fpath)
+    data = utils.read_avida_dat_file(input_fpath)
     # Verify contents of loaded data
     if len(data) == 0:
         print("Failed to find any genomes in given input.")
