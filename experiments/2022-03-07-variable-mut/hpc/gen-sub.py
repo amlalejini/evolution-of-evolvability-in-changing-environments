@@ -278,11 +278,11 @@ def main():
 
         #####################################################################
         # -- Commenting out the bits that actually run Avida
-        analysis_commands += '# ./${EXEC} ${RUN_PARAMS} -a\n'
+        analysis_commands += './${EXEC} ${RUN_PARAMS} -a\n'
         #####################################################################
 
-        gen_1step_mutants_cmd = 'python scripts/gen-mutants.py --steps 1 --analysis_output mutants_step-1.dat --inst_set ${CONFIG_DIR}/instset-heads.cfg --input ${RUN_DIR}/data/analysis/final_dominant.dat --dump ${RUN_DIR} --avida_args "${RUN_PARAMS}" --num_tasks 6 --run_avida_analysis --run_dir ${RUN_DIR}'
-        gen_2step_mutants_cmd = 'python scripts/gen-mutants.py --steps 2 --analysis_output mutants_step-2.dat --inst_set ${CONFIG_DIR}/instset-heads.cfg --input ${RUN_DIR}/data/analysis/final_dominant.dat --dump ${RUN_DIR} --avida_args "${RUN_PARAMS}" --num_tasks 6 --run_avida_analysis --run_dir ${RUN_DIR}'
+        gen_1step_mutants_cmd = '# python scripts/gen-mutants.py --steps 1 --analysis_output mutants_step-1.dat --inst_set ${CONFIG_DIR}/instset-heads.cfg --input ${RUN_DIR}/data/analysis/final_dominant.dat --dump ${RUN_DIR} --avida_args "${RUN_PARAMS}" --num_tasks 6 --run_avida_analysis --run_dir ${RUN_DIR}'
+        gen_2step_mutants_cmd = '# python scripts/gen-mutants.py --steps 2 --analysis_output mutants_step-2.dat --inst_set ${CONFIG_DIR}/instset-heads.cfg --input ${RUN_DIR}/data/analysis/final_dominant.dat --dump ${RUN_DIR} --avida_args "${RUN_PARAMS}" --num_tasks 6 --run_avida_analysis --run_dir ${RUN_DIR}'
         analysis_commands += "cd ${REPO_DIR}\n"
         analysis_commands += gen_1step_mutants_cmd + "\n"
         analysis_commands += gen_2step_mutants_cmd + "\n"
