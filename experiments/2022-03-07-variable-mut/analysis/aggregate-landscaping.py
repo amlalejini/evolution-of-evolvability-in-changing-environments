@@ -160,15 +160,38 @@ def main():
         for pair in task_cooccurrence_counts:
             task_cooccurrence_probs[pair] = task_cooccurrence_counts[pair] / num_viable if num_viable > 0 else 0
 
-        # Calculate log2( (p(t1, t2)) / ( p(t1)*p(t2) ) )
-        task_expectations = {pair:0 for pair in task_cooccurrence_probs}
-        for pair in task_expectations:
+        # Calculate pointwise mutual information: log2( (p(t1, t2)) / ( p(t1)*p(t2) ) )
+        task_pmi = {pair:0 for pair in task_cooccurrence_probs}
+        for pair in task_pmi:
             task_i, task_j = list(pair) if len(pair) > 1 else (list(pair)[0], list(pair)[0])
             # If task_i == task_j, don't multiply probabilities together
             denom = task_occurrence_probs[task_i] * task_occurrence_probs[task_j] if len(pair) > 1 else task_occurrence_probs[task_i]
-            task_expectations[pair] = task_cooccurrence_probs[pair] / denom if denom != 0 else 0
-            if task_expectations[pair] != 0:
-                task_expectations[pair] = math.log(task_expectations[pair], 2)
+            task_pmi[pair] = task_cooccurrence_probs[pair] / denom if denom != 0 else 0
+            if task_pmi[pair] != 0:
+                task_pmi[pair] = math.log(task_pmi[pair], 2)
+
+        # Calculate join self-information: -log2( p(t1, t2) )
+        task_jsi = {pair: 0 for pair in task_cooccurrence_probs}
+        for pair in task_jsi:
+            cooccur_prob = task_cooccurrence_probs[pair]
+            jsi = -1 * math.log(cooccur_prob, 2) if cooccur_prob != 0 else 0
+            task_jsi[pair] = jsi
+
+        # Calculate normalized pmi
+        task_npmi = {pair: 0 for pair in task_cooccurrence_probs}
+        for pair in task_npmi:
+            pmi = task_pmi[pair]
+            jsi = task_jsi[pair]
+            task_npmi[pair] = pmi / jsi if jsi != 0 else 0
+
+        # Expected pmi & unexpected pmi
+        expected_pairs = [frozenset(pair) for pair in itertools.combinations(tasks_env_a, 2)] + [frozenset(pair) for pair in itertools.combinations(tasks_env_b, 2)]
+        # print(f"expected pairs: {expected_pairs}")
+        unexpected_pairs = [frozenset(pair) for pair in itertools.product(tasks_env_a, tasks_env_b)]
+        # print(f"unexpected pairs: {unexpected_pairs}")
+        expected_npmi = sum([task_npmi[pair] for pair in expected_pairs])
+        unexpected_npmi = sum([-1 * task_npmi[pair] for pair in unexpected_pairs])
+        total_npmi = expected_npmi + unexpected_npmi
 
         # Calculate number of unique viable phenotypes
         viable_phenotypes_set = set(viable_phenotypes)
@@ -186,7 +209,9 @@ def main():
         # print(f"  Task probabilities: {task_occurrence_probs}")
         # print(f"  Task co-occurrences: {task_cooccurrence_counts}")
         # print(f"  Task co-occurrences: {task_cooccurrence_probs}")
-        # print(f"  Task expectations: {task_expectations}")
+        # print(f"  Task pmi: {task_pmi}")
+        # print(f"  Task jsi: {task_jsi}")
+        # print(f"  Task jsi: {task_npmi}")
 
         # Save run summary info
         run_summary_info["total_mutants"] = total_mutants
@@ -194,9 +219,12 @@ def main():
         run_summary_info["prop_viable"] = num_viable / total_mutants
         run_summary_info["num_unique_viable_phenotypes"] = num_unique_viable_phenotypes
         run_summary_info["entropy_viable_phenotypes"] = viable_phenotypes_entropy
+        run_summary_info["expected_npmi"] = expected_npmi
+        run_summary_info["unexpected_npmi"] = unexpected_npmi
+        run_summary_info["total_npmi"] = total_npmi
 
         # Save task cooccurrence (not including the full matrix currently)
-        for pair in task_expectations:
+        for pair in task_pmi:
             # for each pair, add a line to task_cooccurrence_info
             task_1, task_2 = list(pair) if len(pair) > 1 else (list(pair)[0], list(pair)[0])
             pair_info = {field:run_summary_info[field] for field in task_cooccur_identifiers}
@@ -204,7 +232,8 @@ def main():
             pair_info["task_2_id"] = task_id_map[task_2]
             pair_info["task_1_name"] = task_1
             pair_info["task_2_name"] = task_2
-            pair_info["cooccur_expectation"] = task_expectations[pair]
+            pair_info["pmi"] = task_pmi[pair]
+            pair_info["npmi"] = task_npmi[pair]
             pair_info["joint_prob"] = task_cooccurrence_probs[pair]
             pair_info["joint_count"] = task_cooccurrence_counts[pair]
             pair_info["task_1_prob"] = task_occurrence_probs[task_1]
@@ -226,7 +255,8 @@ def main():
             pair_info["task_2_prob"] = task_occurrence_probs[task_2]
             pair_info["task_1_count"] = task_occurrence_counts[task_1]
             pair_info["task_2_count"] = task_occurrence_counts[task_2]
-            pair_info["cooccur_expectation"] = task_expectations[pair]
+            pair_info["pmi"] = task_pmi[pair]
+            pair_info["npmi"] = task_npmi[pair]
             pair_info["joint_prob"] = task_cooccurrence_probs[pair]
             pair_info["joint_count"] = task_cooccurrence_counts[pair]
             treatment_cooccurrence_summary_info[treatment_id][task_ij].append(pair_info)
@@ -298,7 +328,8 @@ def main():
                 "task_2_prob",
                 "task_1_count",
                 "task_2_count",
-                "cooccur_expectation",
+                "pmi",
+                "npmi",
                 "joint_prob",
                 "joint_count"
             ]
