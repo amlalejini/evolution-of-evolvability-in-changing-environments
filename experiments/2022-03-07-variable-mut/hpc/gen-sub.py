@@ -38,7 +38,7 @@ fixed_parameters = {
     "META_COPY_MUT": "1.0",
     "META_STD_DEV": "0.01",
     "MUT_RATE_SOURCE": "2",
-    "ANALYZE_FILE": "analyze_env-a.cfg"
+    "ANALYZE_FILE": "analyze.cfg"
 }
 
 special_decorators = ["__DYNAMIC", "__COPY_OVER"]
