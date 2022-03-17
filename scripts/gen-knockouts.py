@@ -89,6 +89,7 @@ def main():
         genotype_data = data[gi]
         sequence = genotype_data["genome_sequence"]
         tree_depth = genotype_data["tree_depth"]
+        update_born = genotype_data["update_born"]
         knockouts = [list(sequence) for _ in range(len(sequence))]
         for pos in range(len(sequence)):
             knockouts[pos][pos] = inst_map["nop-X"]
@@ -107,7 +108,7 @@ def main():
         knockout_analyze_content += genotype_content + "\n"
         # Save dat file location for later.
         ko_dat_files.append(os.path.join(run_dir, "data", output_fname_str))
-        ko_dat_file_info.append({"gi": gi, "tree_depth": tree_depth, "sequence_len": len(sequence)})
+        ko_dat_file_info.append({"gi": gi, "tree_depth": tree_depth, "sequence_len": len(sequence), "update_born": update_born})
 
     # Write knockouts avida analyze file.
     ko_analyze_fname = "analyze_knockouts.cfg"
@@ -140,6 +141,7 @@ def main():
         for line in ko_data:
             line["tree_depth"] = tree_depth
             line["genotype_id"] = genotype_id
+            line["update_born"] = info["update_born"]
 
         merged_ko_fields = list(ko_data[0].keys())
         merged_ko_fields.sort()
