@@ -113,9 +113,18 @@ def read_csv(file_path):
 
 def simple_match_coeff(a, b):
     """
-    Compute the simple matching coefficient (hamming distance) between a and b.
+    Compute the simple matching coefficient between a and b.
     """
     if len(a) != len(b):
         print(f"Length mismatch! {a} {b}")
         exit(-1)
     return sum(ai==bi for ai,bi in zip(a,b))
+
+def hamming_dist(a, b):
+    """
+    Compute the hamming distance between a and b.
+    """
+    if len(a) != len(b):
+        print(f"Length mismatch! {a} {b}")
+        exit(-1)
+    return sum(ai!=bi for ai,bi in zip(a,b))
