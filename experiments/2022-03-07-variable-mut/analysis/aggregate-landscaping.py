@@ -292,6 +292,8 @@ def main():
         run_summary_info["avg_num_tasks_lost"] = avg_num_tasks_lost
         run_summary_info["avg_match_chg_toward_env_a"] = avg_match_chg_toward_env_a
         run_summary_info["avg_match_chg_toward_env_b"] = avg_match_chg_toward_env_b
+        run_summary_info["orig_match_score_env_a"] = orig_sequence_info["match_score_env_a"]
+        run_summary_info["orig_match_score_env_b"] = orig_sequence_info["match_score_env_b"]
 
         # Save task cooccurrence (not including the full matrix currently)
         for pair in task_pmi:
