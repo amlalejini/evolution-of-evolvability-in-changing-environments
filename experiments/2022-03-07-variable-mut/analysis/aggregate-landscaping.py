@@ -120,15 +120,32 @@ def main():
         ############################################################
 
         ############################################################
-        # Load 1-step mutants
+        # Load mutants
         mutant_data = utils.read_avida_dat_file(os.path.join(run_path, "data", mutant_file))
+        orig_sequence_info = mutant_data[-1] # Original sequence is the final line.
+        mutant_data = mutant_data[:-1]       # Mutants are the rest of the lines.
+
+        # Characterize the original "ancestor" sequence
+        orig_phenotype = "".join([str( int(int(orig_sequence_info[task]) > 0) ) for task in tasks_primary])
+        orig_sequence_info["phenotype"] = orig_phenotype
+        orig_sequence_info["match_score_env_a"] = utils.simple_match_coeff(orig_phenotype, profile_env_a)
+        orig_sequence_info["match_score_env_b"] = utils.simple_match_coeff(orig_phenotype, profile_env_b)
+        orig_sequence_info["tasks_performed"] = {task for task in tasks_primary if int(orig_sequence_info[task]) > 0}
+
         total_mutants = len(mutant_data)
         num_viable = 0
+        num_viable_mutants_lose_tasks = 0
+        num_viable_mutants_lose_multiple_tasks = 0
+        num_viable_mutants_gain_tasks = 0
+        num_viable_mutants_gain_multiple_tasks = 0
+        num_viable_mutants_improve_env_a = 0
+        num_viable_mutants_improve_env_b = 0
         viable_phenotypes = []
         task_occurrence_counts = {task: 0 for task in tasks_primary}
         task_cooccurrence_counts = {frozenset(pair): 0 for pair in itertools.combinations(tasks_primary, 2)}
         for mutant in mutant_data:
             viable = int(mutant["is_viable_(0/1)"])
+            mutant["viable"] = bool(viable)
             # If this mutant isn't viable, skip it.
             if viable == 0: continue
             # Otherwise, increment number of viable mutants.
@@ -143,8 +160,48 @@ def main():
                     task_j_name = tasks_primary[task_j]
                     task_j_occurs = int(mutant[task_j_name]) > 0
                     task_cooccurrence_counts[frozenset({task_i_name, task_j_name})] += int( task_i_occurs and task_j_occurs )
-            phenotype = "".join([str(int(mutant[task]) > 0) for task in tasks_primary])
+            # Analyze mutant phenotype
+            phenotype = "".join([str( int(int(mutant[task]) > 0) ) for task in tasks_primary])
+            tasks_performed = {task for task in tasks_primary if int(mutant[task]) > 0}
+            dist_to_ancestor = utils.hamming_dist(orig_sequence_info["phenotype"], phenotype)
+            match_score_env_a = utils.simple_match_coeff(phenotype, profile_env_a)
+            match_score_env_b = utils.simple_match_coeff(phenotype, profile_env_b)
+            tasks_gained = tasks_performed - orig_sequence_info["tasks_performed"]
+            tasks_lost = orig_sequence_info["tasks_performed"] - tasks_performed
+            improves_env_a = match_score_env_a > orig_sequence_info["match_score_env_a"]
+            improves_env_b = match_score_env_b > orig_sequence_info["match_score_env_b"]
+            match_chg_toward_a = match_score_env_a - orig_sequence_info["match_score_env_a"]
+            match_chg_toward_b = match_score_env_b - orig_sequence_info["match_score_env_b"]
+
+            num_viable_mutants_lose_tasks += int(len(tasks_lost) > 0)
+            num_viable_mutants_lose_multiple_tasks += int(len(tasks_lost) > 1)
+            num_viable_mutants_gain_tasks += int(len(tasks_gained) > 0)
+            num_viable_mutants_gain_multiple_tasks += int(len(tasks_gained) > 1)
+            num_viable_mutants_improve_env_a += int(improves_env_a)
+            num_viable_mutants_improve_env_b += int(improves_env_b)
+
+            mutant["phenotype"] = phenotype
+            mutant["tasks_performed"] = tasks_performed
+            mutant["dist_to_ancestor"] = dist_to_ancestor
+            mutant["match_score_env_a"] = match_score_env_a
+            mutant["match_score_env_b"] = match_score_env_b
+            mutant["num_tasks_gained"] = len(tasks_gained)
+            mutant["num_tasks_lost"] = len(tasks_lost)
+            mutant["improves_env_a"] = int(improves_env_a)
+            mutant["improves_env_b"] = int(improves_env_b)
+            mutant["match_chg_toward_a"] = match_chg_toward_a
+            mutant["match_chg_toward_b"] = match_chg_toward_b
+
             viable_phenotypes.append(phenotype)
+
+        avg_dist_to_ancestor = (sum([mutant["dist_to_ancestor"] for mutant in mutant_data if mutant["viable"]]) / num_viable) if num_viable > 0 else -1
+        avg_match_score_env_a = (sum([mutant["match_score_env_a"] for mutant in mutant_data if mutant["viable"]]) / num_viable) if num_viable > 0 else -1
+        avg_match_score_env_b = (sum([mutant["match_score_env_b"] for mutant in mutant_data if mutant["viable"]]) / num_viable) if num_viable > 0 else -1
+        avg_match_chg_toward_env_a = (sum([mutant["match_chg_toward_a"] for mutant in mutant_data if mutant["viable"]]) / num_viable) if num_viable > 0 else -1
+        avg_match_chg_toward_env_b = (sum([mutant["match_chg_toward_b"] for mutant in mutant_data if mutant["viable"]]) / num_viable) if num_viable > 0 else -1
+
+        avg_num_tasks_gained = (sum([mutant["num_tasks_gained"] for mutant in mutant_data if mutant["viable"]]) / num_viable_mutants_gain_tasks) if num_viable_mutants_gain_tasks > 0 else -1
+        avg_num_tasks_lost = (sum([mutant["num_tasks_lost"] for mutant in mutant_data if mutant["viable"]]) / num_viable_mutants_lose_tasks) if num_viable_mutants_lose_tasks > 0 else -1
 
         mutant_data = None
 
@@ -222,6 +279,19 @@ def main():
         run_summary_info["expected_npmi"] = expected_npmi
         run_summary_info["unexpected_npmi"] = unexpected_npmi
         run_summary_info["total_npmi"] = total_npmi
+        run_summary_info["num_viable_mutants_lose_tasks"] = num_viable_mutants_lose_tasks
+        run_summary_info["num_viable_mutants_lose_multiple_tasks"] = num_viable_mutants_lose_multiple_tasks
+        run_summary_info["num_viable_mutants_gain_tasks"] = num_viable_mutants_gain_tasks
+        run_summary_info["num_viable_mutants_gain_multiple_tasks"] = num_viable_mutants_gain_multiple_tasks
+        run_summary_info["num_viable_mutants_improve_env_a"] = num_viable_mutants_improve_env_a
+        run_summary_info["num_viable_mutants_improve_env_b"] = num_viable_mutants_improve_env_b
+        run_summary_info["avg_dist_to_ancestor"] = avg_dist_to_ancestor
+        run_summary_info["avg_match_score_env_a"] = avg_match_score_env_a
+        run_summary_info["avg_match_score_env_b"] = avg_match_score_env_b
+        run_summary_info["avg_num_tasks_gained"] = avg_num_tasks_gained
+        run_summary_info["avg_num_tasks_lost"] = avg_num_tasks_lost
+        run_summary_info["avg_match_chg_toward_env_a"] = avg_match_chg_toward_env_a
+        run_summary_info["avg_match_chg_toward_env_b"] = avg_match_chg_toward_env_b
 
         # Save task cooccurrence (not including the full matrix currently)
         for pair in task_pmi:
