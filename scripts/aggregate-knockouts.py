@@ -16,15 +16,25 @@ profile_env_a = "101010"
 profile_env_b = "010101"
 profile_all = "111111"
 
+lineage_arch_long_cfg_fields = [
+    "env_condition",
+    "env_type",
+    "env_chg_rate",
+    "RANDOM_SEED",
+    "COPY_MUT_PROB"
+]
+
 def main():
     parser = argparse.ArgumentParser(description="Run submission script.")
     parser.add_argument("--data_dir", type=str, help="Where is the base output directory for each run?")
     parser.add_argument("--dump", type=str, help="Where to dump this?", default=".")
+    parser.add_argument("--no_arch", action="store_true", help="Don't aggregate architectures.")
 
     # Parse command line arguments
     args = parser.parse_args()
     data_dir = args.data_dir
     dump_dir = args.dump
+    agg_arch = not args.no_arch
 
     # Verify that the given data directory exits
     if not os.path.exists(data_dir):
@@ -41,6 +51,13 @@ def main():
     run_summary_header = None
     run_summary_lines = []
 
+    if agg_arch:
+        lineage_arch_long_header = None
+        # lineage_arch_long_lines = []
+        lineage_arch_long_fpath = os.path.join(dump_dir, "lineage_arch_long.csv")
+        with open(lineage_arch_long_fpath, "w") as fp:
+            fp.write("")
+
     # Loop over runs, aggregating data from each.
     total_runs = len(run_dirs)
     cur_run_i = 0
@@ -53,6 +70,7 @@ def main():
             continue
 
         run_summary_info = {}
+        lineage_arch_long_info = []
 
         cur_run_i += 1
         print(f"Processing ({cur_run_i}/{total_runs}): {run_path}")
@@ -134,7 +152,7 @@ def main():
             genotype_summary_info[genotype_id]["task_env_b_sites"] = task_env_b_sites
             genotype_summary_info[genotype_id]["position_info"] = position_info
 
-        print(genotype_summary_info)
+        # print(genotype_summary_info)
 
         # Identify extant genotype
         extant_genotype_id = None
@@ -146,16 +164,65 @@ def main():
             update_born = int(orig_genotypes[gid]["update_born"])
             if update_born > cur_extant_update_born:
                 extant_genotype_id = gid
-        print(extant_genotype_id)
 
         # Summarize run information
-        # - Extant sumamry info
+        # - Extant summary info
         run_summary_info["extant_num_viability_sites"] = genotype_summary_info[extant_genotype_id]["viability_sites"]
         run_summary_info["extant_num_task_sites"] = genotype_summary_info[extant_genotype_id]["task_sites"]
         run_summary_info["extant_num_multi_task_sites"] = genotype_summary_info[extant_genotype_id]["multi_task_sites"]
         run_summary_info["extant_num_task_env_a_sites"] = genotype_summary_info[extant_genotype_id]["task_env_a_sites"]
         run_summary_info["extant_num_task_env_b_sites"] = genotype_summary_info[extant_genotype_id]["task_env_b_sites"]
         run_summary_info["extant_num_tasks_performed"] = len(orig_genotypes[extant_genotype_id]["tasks_performed"])
+        ############################################################
+
+        ############################################################
+        # Contribute to lineage architecture (long-form) file
+        # orig_genotypes
+        # genotype_summary_info
+        if agg_arch:
+            for genotype_id in genotype_ids:
+                orig_genotype = orig_genotypes[genotype_id]
+                genotype_info = genotype_summary_info[genotype_id]
+                tree_depth = orig_genotype["tree_depth"]
+                position_info = genotype_info["position_info"]
+                positions = [int(pos) for pos in position_info.keys()]
+                positions.sort()
+                for pos in positions:
+                    line_info = {field:run_summary_info[field] for field in lineage_arch_long_cfg_fields}
+                    cyclic_category = ""
+                    if position_info[pos]["viability"]:
+                        cyclic_category = "viability"
+                    elif position_info[pos]["encodes_env_a_task"] and position_info[pos]["encodes_env_b_task"]:
+                        cyclic_category = "env_ab"
+                    elif position_info[pos]["encodes_env_a_task"]:
+                        cyclic_category = "env_a"
+                    elif position_info[pos]["encodes_env_b_task"]:
+                        cyclic_category = "env_b"
+                    else:
+                        cyclic_category = "neutral"
+                    tasks = "[" + ";".join(task for task in tasks_primary if task in position_info[pos]["tasks"]) + "]"
+                    viability = position_info[pos]["viability"]
+                    line_info["genotype_id"] = genotype_id
+                    line_info["tree_depth"] = tree_depth
+                    line_info["site"] = pos
+                    line_info["cyclic_category"] = cyclic_category
+                    line_info["tasks"] = tasks
+                    line_info["viability"] = viability
+                    lineage_arch_long_info.append(line_info)
+
+            lineage_arch_long_fields = list(lineage_arch_long_info[0].keys())
+            lineage_arch_long_fields.sort()
+            write_header = False
+            if lineage_arch_long_header == None:
+                write_header = True
+                lineage_arch_long_header = lineage_arch_long_fields
+            elif lineage_arch_long_fields != lineage_arch_long_header:
+                print("Lineage architecture long format header mismatch!")
+                exit(-1)
+            with open(lineage_arch_long_fpath, "a") as fp:
+                if write_header: fp.write(",".join(lineage_arch_long_header) + "\n")
+                fp.write("\n".join([ ",".join( [str(info[field]) for field in lineage_arch_long_header] ) for info in lineage_arch_long_info ]))
+            lineage_arch_long_info = []
         ############################################################
 
 
