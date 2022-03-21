@@ -14,13 +14,18 @@ default_account = "devolab"
 default_num_replicates = 30
 default_job_time_request = "120:00:00"
 default_job_mem_request = "4G"
+default_total_updates = 300000
 
-total_updates = 300000
 job_name = "03-14"
 executable = "avida"
 
-base_script_filename = './base_script.txt'
+base_script_filename = "./base_script.txt"
 base_events_filename = "./base_events_file.cfg"
+# base_run_logic="""
+# if [[ ${SLURM_ARRAY_TASK_ID} -eq <<RUN_ARRAY_ID>> ]] ; then
+
+# fi
+# """
 
 # Create combo object to collect all conditions we'll run
 combos = CombinationCollector()
@@ -40,15 +45,14 @@ fixed_parameters = {
     "MUT_RATE_SOURCE": "1",
     "PHYLOGENY_SNAPSHOT_RES": "300000",
     "SYSTEMATICS_RES": "100",
-    "FORCE_MRCA_COMP": "1",
-    "ANALYZE_FILE": "analyze_env-a.cfg",
+    "FORCE_MRCA_COMP": "0",
+    "ANALYZE_FILE": "analyze.cfg",
 }
 
 special_decorators = ["__DYNAMIC", "__COPY_OVER"]
 
 combos.register_var("environment__DYNAMIC")
 combos.register_var("COPY_MUT_PROB")
-
 
 combos.add_val(
     "COPY_MUT_PROB",
@@ -98,6 +102,9 @@ def main():
     parser.add_argument("--account", type=str, default=default_account, help="Value to use for the slurm ACCOUNT")
     parser.add_argument("--time_request", type=str, default=default_job_time_request, help="How long to request for each job on hpc?")
     parser.add_argument("--mem", type=str, default=default_job_mem_request, help="How much memory to request for each job?")
+    parser.add_argument("--updates", type=int, default=default_total_updates, help="How many updates to run avida?")
+
+    parser.add_argument("--patch", action="store_true", help="Patch unfinished runs. Only generate submission scripts for incomplete runs.")
 
     # Load in command line arguments
     args = parser.parse_args()
@@ -111,6 +118,8 @@ def main():
     force_events_gen = args.force_events_gen
     job_time_request = args.time_request
     job_memory_request = args.mem
+    patch_mode = args.patch
+    total_updates = args.updates
 
     # Load in the base slurm file
     base_sub_script = ""
@@ -136,6 +145,8 @@ def main():
     print(f' - Time Request: {job_time_request}')
     print(f' - Seed offset: {seed_offset}')
     print(f' - Force events generation: {force_events_gen}')
+    print(f' - Total updates? {total_updates}')
+    print(f' - Patch mode? {patch_mode}')
 
     # If no job_dir provided, default to data_dir/jobs
     if job_dir == None:
@@ -150,7 +161,6 @@ def main():
         filename_prefix = f'RUN_C{cond_i}'
         file_str = base_sub_script
         file_str = file_str.replace("<<TIME_REQUEST>>", job_time_request)
-        file_str = file_str.replace("<<ARRAY_ID_RANGE>>", f"1-{num_replicates}")
         file_str = file_str.replace("<<MEMORY_REQUEST>>", job_memory_request)
         file_str = file_str.replace("<<JOB_NAME>>", job_name)
         file_str = file_str.replace("<<CONFIG_DIR>>", config_dir)
@@ -159,9 +169,9 @@ def main():
         file_str = file_str.replace("<<JOB_SEED_OFFSET>>", str(cur_seed))
         file_str = file_str.replace("<<ACCOUNT_NAME>>", hpc_account)
 
-        # ===================================================
+        ###################################################################
         # Configure the run
-        # ===================================================
+        ###################################################################
         file_str = file_str.replace("<<RUN_DIR>>", \
             os.path.join(data_dir, f'{filename_prefix}_'+'${SEED}'))
 
@@ -180,6 +190,7 @@ def main():
 
         ###################################################################
         # -- Build environment file (for each replicate). --
+        ###################################################################
         events_desc_path = os.path.join(config_dir, "environment_states")
         events_path = os.path.join(config_dir, "events")
         events_file_arg = ""
@@ -246,62 +257,120 @@ def main():
                 with open(events_fpath, "w") as fp:
                     fp.write(events_file_content)
                 generated_files.add(events_fpath)
+
+        # Set the event file accordingly
+        run_param_info["EVENT_FILE"] = events_file_arg
         ###################################################################
 
-        run_param_info["EVENT_FILE"] = events_file_arg
-
+        ###################################################################
+        # Build avida commandline parameters string
+        ###################################################################
         fields = list(run_param_info.keys())
         fields.sort()
         set_params = [f"-set {field} {run_param_info[field]}" for field in fields]
         copy_params = [condition_dict[key] for key in condition_dict if "__COPY_OVER" in key]
-
         run_params = " ".join(set_params + copy_params)
+        ###################################################################
 
         # Add run commands to run the experiment
-        run_commands = ''
+        cfg_run_commands = ''
         # Copy events description and events file into run directory
-        run_commands += "cp ${CONFIG_DIR}/events/" + events_file_arg + " ${RUN_DIR}/\n"
-        run_commands += "cp ${CONFIG_DIR}/environment_states/" + events_desc_arg + " ${RUN_DIR}/environment_states.csv\n"
-        # Run avida
-        run_commands += f'RUN_PARAMS="{run_params}"\n'
+        cfg_run_commands += "cp ${CONFIG_DIR}/events/" + events_file_arg + " ${RUN_DIR}/\n"
+        cfg_run_commands += "cp ${CONFIG_DIR}/environment_states/" + events_desc_arg + " ${RUN_DIR}/environment_states.csv\n"
+        # Set the run
+        cfg_run_commands += f'RUN_PARAMS="{run_params}"\n'
 
-        #####################################################################
-        # The bits that actually run Avida
-        run_commands += 'echo "./${EXEC} ${RUN_PARAMS}" > cmd.log\n'
-        run_commands += './${EXEC} ${RUN_PARAMS} > run.log\n'
-        run_commands += 'mv ./*.csv ./data/ \n'
-        #####################################################################
+        # By default, add all commands to submission file.
+        array_id_run_info = {
+            array_id: {
+                "avida": True,
+                "avida_analyze_mode": True,
+                "landscape_step-1": True,
+                "landscape_step-2": True
+            }
+            for array_id in range(1, num_replicates+1)
+        }
+        array_id_to_seed = {array_id:(cur_seed + (array_id - 1)) for array_id in array_id_run_info}
+        if patch_mode:
+            for array_id in array_id_run_info:
+                replicate_seed = array_id_to_seed[array_id]
+                run_path = os.path.join(data_dir, f"RUN_C{cond_i}_{replicate_seed}")
+                array_id_run_info[array_id]["avida"] = not os.path.exists(os.path.exists(run_path, "data", f"detail-{total_updates}.spop"))
+                array_id_run_info[array_id]["avida_analyze_mode"] = not os.path.exists(os.path.exists(run_path, "data", "analysis", "lineage.dat"))
+                array_id_run_info[array_id]["landscape_step-1"] = not os.path.exists(os.path.exists(run_path, "data", "mutants_step-1.dat"))
+                array_id_run_info[array_id]["landscape_step-2"] = not os.path.exists(os.path.exists(run_path, "data", "mutants_step-2.dat"))
 
-        file_str = file_str.replace("<<RUN_COMMANDS>>", run_commands)
+        # Track which array ids need to be included. If none, don't need to output this file.
+        active_array_ids = []
+        inactive_array_ids = []
+        run_sub_logic = ""
+        for array_id in range(1, num_replicates+1):
+            # If this run is totally done, make note and continue.
+            if not any([array_id_run_info[array_id][field] for field in array_id_run_info[array_id]]):
+                inactive_array_ids.append(array_id)
+                continue
+            # This run is not done already. Make note.
+            active_array_ids.append(array_id)
 
-        # ===================================================
-        # Configure analyze mode
-        # ===================================================
-        # Add commands to run avida analyze mode
-        analysis_commands = ''
-        # analysis_commands += f'RUN_PARAMS="{run_params}"\n' # Only include if analyze mode parameters don't match run paramters.
+            run_logic = "if [[ ${SLURM_ARRAY_TASK_ID} -eq "+str(array_id)+" ]] ; then\n"
 
-        #####################################################################
-        # The bits that actually run Avida -a
-        analysis_commands += './${EXEC} ${RUN_PARAMS} -a\n'
-        #####################################################################
+            # (1) Run Avida
+            run_commands = ''
+            if array_id_run_info[array_id]["avida"]:
+                run_commands += 'echo "./${EXEC} ${RUN_PARAMS}" > cmd.log\n'
+                run_commands += './${EXEC} ${RUN_PARAMS} > run.log\n'
+                run_commands += 'mv ./*.csv ./data/ \n'
 
-        gen_1step_mutants_cmd = 'python scripts/gen-mutants.py --steps 1 --analysis_output mutants_step-1.dat --inst_set ${CONFIG_DIR}/instset-heads.cfg --input ${RUN_DIR}/data/analysis/final_dominant.dat --dump ${RUN_DIR} --avida_args "${RUN_PARAMS}" --num_tasks 6 --run_avida_analysis --run_dir ${RUN_DIR}'
-        gen_2step_mutants_cmd = 'python scripts/gen-mutants.py --steps 2 --analysis_output mutants_step-2.dat --inst_set ${CONFIG_DIR}/instset-heads.cfg --input ${RUN_DIR}/data/analysis/final_dominant.dat --dump ${RUN_DIR} --avida_args "${RUN_PARAMS}" --num_tasks 6 --run_avida_analysis --run_dir ${RUN_DIR}'
-        analysis_commands += "cd ${REPO_DIR}\n"
-        analysis_commands += gen_1step_mutants_cmd + "\n"
-        analysis_commands += gen_2step_mutants_cmd + "\n"
-        analysis_commands += "cd ${RUN_DIR}\n"
+            # (2) Run Avida in analyze mode
+            analysis_commands = ''
+            if array_id_run_info[array_id]["avida_analyze_mode"]:
+                analysis_commands += './${EXEC} ${RUN_PARAMS} -a\n'
 
-        file_str = file_str.replace("<<ANALYSIS_COMMANDS>>", analysis_commands)
+            # (3) Run mutational landscaping
+            landscape_commands = ''
+            landscape_commands += "cd ${REPO_DIR}\n"
+            # -- step 1 mutants --
+            if array_id_run_info[array_id]["landscape_step-1"]:
+                gen_1step_mutants_cmd = 'python scripts/gen-mutants.py --steps 1 --analysis_output mutants_step-1.dat --inst_set ${CONFIG_DIR}/instset-heads.cfg --input ${RUN_DIR}/data/analysis/final_dominant.dat --dump ${RUN_DIR} --avida_args "${RUN_PARAMS}" --num_tasks 6 --run_avida_analysis --run_dir ${RUN_DIR}'
+                landscape_commands += gen_1step_mutants_cmd + "\n"
+            # -- step 2 mutants --
+            if array_id_run_info[array_id]["landscape_step-2"]:
+                gen_2step_mutants_cmd = 'python scripts/gen-mutants.py --steps 2 --analysis_output mutants_step-2.dat --inst_set ${CONFIG_DIR}/instset-heads.cfg --input ${RUN_DIR}/data/analysis/final_dominant.dat --dump ${RUN_DIR} --avida_args "${RUN_PARAMS}" --num_tasks 6 --run_avida_analysis --run_dir ${RUN_DIR}'
+                landscape_commands += gen_2step_mutants_cmd + "\n"
+            landscape_commands += "cd ${RUN_DIR}\n"
 
-        # ===================================================
-        # Write job submission file
-        # ===================================================
-        mkdir_p(job_dir)
-        with open(os.path.join(job_dir, f'{filename_prefix}.sb'), 'w') as fp:
-            fp.write(file_str)
+            run_logic += run_commands
+            run_logic += analysis_commands
+            run_logic += landscape_commands
+            run_logic += "fi\n\n"
+            run_sub_logic += run_logic
 
+        # -- Set the SLURM array id range parameter --
+        array_id_range_param = ""
+        if len(active_array_ids) == num_replicates:
+            array_id_range_param = f"1-{num_replicates}"
+        else:
+            array_id_range_param = ",".join([str(array_id) for array_id in active_array_ids])
+
+        # -- add run commands to file str --
+        file_str = file_str.replace("<<ARRAY_ID_RANGE>>", array_id_range_param)
+        file_str = file_str.replace("<<CFG_RUN_COMMANDS>>", cfg_run_commands)
+        file_str = file_str.replace("<<RUN_COMMANDS>>", run_sub_logic)
+
+        ###################################################################
+        # Write job submission file (if any of the array ids are active)
+        ###################################################################
+        # Report active/inactive
+        print(f"RUN_C{cond_i}:")
+        print(f" - Active: " + ", ".join([f"RUN_C{cond_i}_{array_id_to_seed[array_id]}" for array_id in active_array_ids]))
+        print(f" - Inactive: " + ", ".join([f"RUN_C{cond_i}_{array_id_to_seed[array_id]}" for array_id in inactive_array_ids]))
+
+        if len(active_array_ids):
+            mkdir_p(job_dir)
+            with open(os.path.join(job_dir, f'{filename_prefix}.sb'), 'w') as fp:
+                fp.write(file_str)
+
+        # Update condition id and current job id
         cur_job_id += 1
         cond_i += 1
 
