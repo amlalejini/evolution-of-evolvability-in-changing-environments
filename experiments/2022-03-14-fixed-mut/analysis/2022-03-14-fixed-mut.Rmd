@@ -1,0 +1,640 @@
+# 2022-03-14 - Fixed mutation rates
+
+<!-- TODO - color based on change rate, grid on change type -->
+
+## Setup
+
+```{r}
+experiment_slug <- "2022-03-14-fixed-mut"
+working_directory <- paste0("experiments/",experiment_slug,"/analysis/")
+```
+
+### Analysis dependencies
+
+Load all required R libraries
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(scales)
+library(cowplot)
+library(RColorBrewer)
+source("https://gist.githubusercontent.com/benmarwick/2a1bb0133ff568cbe28d/raw/fb53bd97121f7f9ce947837ef1a4c65a73bffb3f/geom_flat_violin.R")
+```
+
+These analyses were knit with the following environment:
+
+```{r}
+print(version)
+```
+
+### Load data
+
+Load summary data.
+
+```{r}
+summary_data_loc <- paste0(working_directory, "data/aggregate.csv")
+summary_data <- read.csv(summary_data_loc, na.strings="NONE")
+
+summary_data$COPY_MUT_PROB <- as.factor(
+  summary_data$COPY_MUT_PROB
+)
+summary_data$env_chg_rate <- as.factor(
+  summary_data$env_chg_rate
+)
+summary_data$env_condition <- as.factor(
+  summary_data$env_condition
+)
+summary_data$env_type <- as.factor(
+  summary_data$env_type
+)
+
+```
+
+Load time series data.
+
+```{r}
+time_series_data_loc <- paste0(working_directory, "data/time_series_u0-u300000.csv")
+time_series_data <- read.csv(time_series_data_loc, na.strings="NONE")
+
+time_series_data$COPY_MUT_PROB <- as.factor(
+  time_series_data$COPY_MUT_PROB
+)
+time_series_data$env_chg_rate <- as.factor(
+  time_series_data$env_chg_rate
+)
+time_series_data$env_condition <- as.factor(
+  time_series_data$env_condition
+)
+time_series_data$env_type <- as.factor(
+  time_series_data$env_type
+)
+```
+
+Miscellaneous setup.
+
+```{r}
+# Configure our default graphing theme
+theme_set(theme_cowplot())
+# Palette
+cb_palette <- "Set2"
+alpha <- 0.05
+# Create a directory to store plots
+plot_directory <- paste0(working_directory, "plots/")
+dir.create(plot_directory, showWarnings=FALSE)
+```
+
+## Final mutation rates
+
+```{r}
+ggplot(
+    summary_data,
+    aes(
+      x=env_condition,
+      y=final_average_copy_mutation_rate,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  facet_grid(
+    ~COPY_MUT_PROB
+  ) +
+  scale_color_brewer(
+    palette = cb_palette
+  ) +
+  scale_fill_brewer(
+    palette = cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text.x = element_text(angle = 90)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "final_copy_mutation_rate.pdf")
+)
+```
+
+## Fitness over time
+
+```{r}
+ggplot(
+    time_series_data,
+    # filter(time_series_data, update>250000),
+    aes(
+      x=update,
+      y=avg_fitness,
+      fill=env_condition,
+      color=env_condition
+    )
+  ) +
+  stat_summary(geom="line", fun=mean) +
+  stat_summary(
+    geom="ribbon",
+    fun.min=min,
+    fun.max=max,
+    alpha=0.2,
+    linetype=0
+  ) +
+  # stat_summary(
+  #   geom="ribbon",
+  #   fun.data="mean_cl_boot",
+  #   fun.args=list(conf.int=0.95),
+  #   alpha=0.2,
+  #   linetype=0
+  # ) +
+  scale_y_continuous(
+    # trans=pseudo_log_trans(sigma=1,base=10)
+    trans=log10_trans()
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type
+  ) +
+  theme(
+    legend.position="bottom"
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "average_fitness_ot.pdf"),
+  width=18,
+  height=10
+)
+```
+
+## Dominant lineage length (genotypes)
+
+```{r}
+ggplot(
+    summary_data,
+    aes(
+      x=env_condition,
+      y=dom_lineage_length_genotypes,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  facet_grid(
+    ~COPY_MUT_PROB
+  ) +
+  scale_color_brewer(
+    palette = cb_palette
+  ) +
+  scale_fill_brewer(
+    palette = cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text.x = element_text(angle = 90)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "dom_lineage_length_genotypes.pdf")
+)
+```
+
+## phylo_current_phylogenetic_diversity
+
+```{r}
+ggplot(
+    summary_data,
+    aes(
+      x=env_condition,
+      y=phylo_current_phylogenetic_diversity,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  facet_grid(
+    ~COPY_MUT_PROB
+  ) +
+  scale_color_brewer(
+    palette = cb_palette
+  ) +
+  scale_fill_brewer(
+    palette = cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text.x = element_text(angle = 90)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "phylo_current_phylogenetic_diversity.pdf")
+)
+```
+
+## phylo_diversity
+
+Genotypic Diversity (entropy of taxa in population).
+
+```{r}
+ggplot(
+    summary_data,
+    aes(
+      x=env_condition,
+      y=phylo_diversity,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  facet_grid(
+    ~COPY_MUT_PROB
+  ) +
+  scale_color_brewer(
+    palette = cb_palette
+  ) +
+  scale_fill_brewer(
+    palette = cb_palette
+  ) +
+  ggtitle("Genotypic Diversity (entropy of taxa in population).") +
+  theme(
+    legend.position="none",
+    axis.text.x = element_text(angle = 90)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "phylo_diversity.pdf")
+)
+```
+
+## phylo_mean_pairwise_distance
+
+```{r}
+ggplot(
+    summary_data,
+    aes(
+      x=env_condition,
+      y=phylo_mean_pairwise_distance,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  facet_grid(
+    ~COPY_MUT_PROB
+  ) +
+  scale_color_brewer(
+    palette = cb_palette
+  ) +
+  scale_fill_brewer(
+    palette = cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text.x = element_text(angle = 90)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "phylo_mean_pairwise_distance.pdf")
+)
+```
+
+## phylo_mrca_changes
+
+```{r}
+ggplot(
+    summary_data,
+    aes(
+      x=env_condition,
+      y=phylo_mrca_changes,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  facet_grid(
+    ~COPY_MUT_PROB
+  ) +
+  scale_color_brewer(
+    palette = cb_palette
+  ) +
+  scale_fill_brewer(
+    palette = cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text.x = element_text(angle = 90)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "phylo_mrca_changes.pdf")
+)
+```
+
+```{r}
+ggplot(
+    time_series_data,
+    aes(
+      x=update,
+      y=phylo_mrca_changes,
+      fill=env_condition,
+      color=env_condition
+    )
+  ) +
+  stat_summary(geom="line", fun=mean) +
+  stat_summary(
+    geom="ribbon",
+    fun.min=min,
+    fun.max=max,
+    alpha=0.2,
+    linetype=0
+  ) +
+  # stat_summary(
+  #   geom="ribbon",
+  #   fun.data="mean_cl_boot",
+  #   fun.args=list(conf.int=0.95),
+  #   alpha=0.2,
+  #   linetype=0
+  # ) +
+  scale_y_continuous(
+    # trans=pseudo_log_trans(sigma=1,base=10)
+    trans=log10_trans()
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type
+  ) +
+  theme(
+    legend.position="bottom"
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "phylo_mrca_changes_ot.pdf"),
+  width=18,
+  height=10
+)
+```
+
+## phylo_mrca_depth
+
+```{r}
+ggplot(
+    summary_data,
+    aes(
+      x=env_condition,
+      y=phylo_mrca_depth,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  facet_grid(
+    ~COPY_MUT_PROB
+  ) +
+  scale_color_brewer(
+    palette = cb_palette
+  ) +
+  scale_fill_brewer(
+    palette = cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text.x = element_text(angle = 90),
+    panel.border = element_rect(color = "grey", fill=NA, size=2)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "phylo_mrca_depth.pdf")
+)
+```
+
+## phylo_num_taxa_extant
+
+```{r}
+ggplot(
+    summary_data,
+    aes(
+      x=env_condition,
+      y=phylo_num_taxa_extant,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  facet_grid(
+    ~COPY_MUT_PROB
+  ) +
+  scale_color_brewer(
+    palette = cb_palette
+  ) +
+  scale_fill_brewer(
+    palette = cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text.x = element_text(angle = 90)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "phylo_num_taxa_extant.pdf")
+)
+```
+
+## phylo_num_taxa_tree
+
+```{r}
+ggplot(
+    summary_data,
+    aes(
+      x=env_condition,
+      y=phylo_num_taxa_tree,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  facet_grid(
+    ~COPY_MUT_PROB
+  ) +
+  scale_color_brewer(
+    palette = cb_palette
+  ) +
+  scale_fill_brewer(
+    palette = cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text.x = element_text(angle = 90)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "phylo_num_taxa_tree.pdf")
+)
+```
+
+## phylo_sum_pairwise_distance
+
+```{r}
+ggplot(
+    summary_data,
+    aes(
+      x=env_condition,
+      y=phylo_sum_pairwise_distance,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  facet_grid(
+    ~COPY_MUT_PROB
+  ) +
+  scale_color_brewer(
+    palette = cb_palette
+  ) +
+  scale_fill_brewer(
+    palette = cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text.x = element_text(angle = 90)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "phylo_sum_pairwise_distance.pdf")
+)
+```
+
+
