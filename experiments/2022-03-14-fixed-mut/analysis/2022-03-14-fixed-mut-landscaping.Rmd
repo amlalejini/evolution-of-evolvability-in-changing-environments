@@ -36,14 +36,8 @@ ls1_run_summary_data <- read.csv(ls1_run_summary_data_loc, na.strings="NONE")
 ls1_run_summary_data$COPY_MUT_PROB <- as.factor(
   ls1_run_summary_data$COPY_MUT_PROB
 )
-ls1_run_summary_data$env_chg_rate <- factor(
-  ls1_run_summary_data$env_chg_rate,
-  levels=c(
-    "none",
-    "30",
-    "300",
-    "3000"
-  )
+ls1_run_summary_data$env_chg_rate <- as.factor(
+  ls1_run_summary_data$env_chg_rate
 )
 ls1_run_summary_data$env_condition <- as.factor(
   ls1_run_summary_data$env_condition
@@ -52,6 +46,49 @@ ls1_run_summary_data$env_type <- as.factor(
   ls1_run_summary_data$env_type
 )
 
+get_env_chg_rate_label <- function(env_chg_rate, env_type) {
+  if (env_chg_rate == "none" && env_type=="consta") {
+    return("none-a")
+  } else if (env_chg_rate == "none" && env_type=="constb") {
+    return("none-b")
+  } else if (env_chg_rate=="30") {
+    return("30")
+  } else if (env_chg_rate=="300") {
+    return("300")
+  } else if (env_chg_rate=="3000") {
+    return("3000")
+  } else {
+    return("unknown")
+  }
+}
+get_env_type_label <- function(env_type) {
+  if (env_type=="consta" || env_type=="constb") {
+    return("const")
+  } else if (env_type=="cycling") {
+    return("cycling")
+  } else if (env_type=="random") {
+    return("random")
+  }
+}
+ls1_run_summary_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  ls1_run_summary_data$env_chg_rate,
+  ls1_run_summary_data$env_type
+)
+ls1_run_summary_data$env_chg_rate_label <- factor(
+  ls1_run_summary_data$env_chg_rate_label,
+  levels=c(
+    "none-a",
+    "none-b",
+    "30",
+    "300",
+    "3000"
+  )
+)
+ls1_run_summary_data$env_type_label <- mapply(
+  get_env_type_label,
+  ls1_run_summary_data$env_type
+)
 ```
 
 Load 1-step task co-occurrence data.
@@ -77,6 +114,26 @@ ls1_cooccur_data$task_1_id <- as.factor(
 ls1_cooccur_data$task_2_id <- as.factor(
   ls1_cooccur_data$task_2_id
 )
+
+ls1_cooccur_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  ls1_cooccur_data$env_chg_rate,
+  ls1_cooccur_data$env_type
+)
+ls1_cooccur_data$env_chg_rate_label <- factor(
+  ls1_cooccur_data$env_chg_rate_label,
+  levels=c(
+    "none-a",
+    "none-b",
+    "30",
+    "300",
+    "3000"
+  )
+)
+ls1_cooccur_data$env_type_label <- mapply(
+  get_env_type_label,
+  ls1_cooccur_data$env_type
+)
 ```
 
 Load 2-step landscape data
@@ -96,11 +153,34 @@ ls2_run_summary_data$env_condition <- as.factor(
 ls2_run_summary_data$env_type <- as.factor(
   ls2_run_summary_data$env_type
 )
+
+ls2_run_summary_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  ls2_run_summary_data$env_chg_rate,
+  ls2_run_summary_data$env_type
+)
+ls2_run_summary_data$env_chg_rate_label <- factor(
+  ls2_run_summary_data$env_chg_rate_label,
+  levels=c(
+    "none-a",
+    "none-b",
+    "30",
+    "300",
+    "3000"
+  )
+)
+ls2_run_summary_data$env_type_label <- mapply(
+  get_env_type_label,
+  ls2_run_summary_data$env_type
+)
 ```
 
 Load 2-step task co-occurrence data.
 ```{r}
-ls2_cooccur_data_loc <- paste0(working_directory, "data/landscape_task_cooccurrence_treatment_summary_step-2.csv")
+ls2_cooccur_data_loc <- paste0(
+  working_directory,
+  "data/landscape_task_cooccurrence_treatment_summary_step-2.csv"
+)
 ls2_cooccur_data <- read.csv(ls2_cooccur_data_loc, na.strings="NONE")
 
 ls2_cooccur_data$COPY_MUT_PROB <- as.factor(
@@ -120,6 +200,26 @@ ls2_cooccur_data$task_1_id <- as.factor(
 )
 ls2_cooccur_data$task_2_id <- as.factor(
   ls2_cooccur_data$task_2_id
+)
+
+ls2_cooccur_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  ls2_cooccur_data$env_chg_rate,
+  ls2_cooccur_data$env_type
+)
+ls2_cooccur_data$env_chg_rate_label <- factor(
+  ls2_cooccur_data$env_chg_rate_label,
+  levels=c(
+    "none-a",
+    "none-b",
+    "30",
+    "300",
+    "3000"
+  )
+)
+ls2_cooccur_data$env_type_label <- mapply(
+  get_env_type_label,
+  ls2_cooccur_data$env_type
 )
 ```
 
@@ -155,49 +255,6 @@ ls2_run_summary_data$final_average_copy_mutation_rate <- mapply(
   get_final_mut_rate,
   ls2_run_summary_data$RANDOM_SEED
 )
-
-get_env_chg_rate_label <- function(env_chg_rate, env_type) {
-  if (env_chg_rate == "none" && env_type=="consta") {
-    return("none-a")
-  } else if (env_chg_rate == "none" && env_type=="constb") {
-    return("none-b")
-  } else if (env_chg_rate=="30") {
-    return("30")
-  } else if (env_chg_rate=="300") {
-    return("300")
-  } else if (env_chg_rate=="3000") {
-    return("3000")
-  } else {
-    return("unknown")
-  }
-}
-ls1_run_summary_data$env_chg_rate_label <- mapply(
-  get_env_chg_rate_label,
-  ls1_run_summary_data$env_chg_rate,
-  ls1_run_summary_data$env_type
-)
-ls1_run_summary_data$env_chg_rate_label <- factor(
-  ls1_run_summary_data$env_chg_rate_label,
-  levels=c(
-    "none-a",
-    "none-b",
-    "30",
-    "300",
-    "3000"
-  )
-)
-
-get_env_type_label <- function(env_type) {
-  if (env_type=="consta" || env_type=="constb" || env_type=="cycling") {
-    return("cycling+const")
-  } else if (env_type=="random") {
-    return("random")
-  }
-}
-ls1_run_summary_data$env_type_label <- mapply(
-  get_env_type_label,
-  ls1_run_summary_data$env_type
-)
 ```
 
 Miscellaneous setup.
@@ -221,9 +278,9 @@ dir.create(plot_directory, showWarnings=FALSE)
 ggplot(
     ls1_run_summary_data,
     aes(
-      x=env_chg_rate,
+      x=env_chg_rate_label,
       y=prop_viable,
-      fill=env_chg_rate
+      fill=env_condition
     )
   ) +
   geom_flat_violin(
@@ -232,7 +289,7 @@ ggplot(
     adjust=1.5
   ) +
   geom_point(
-    mapping=aes(color=env_chg_rate),
+    mapping=aes(color=env_condition),
     position = position_jitter(width = .15),
     size = .5,
     alpha = 0.8
@@ -249,14 +306,15 @@ ggplot(
     palette=cb_palette
   ) +
   facet_grid(
-    env_type~COPY_MUT_PROB
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
   ) +
   theme(
     legend.position="none",
-    axis.text.x = element_text(angle = 90),
-    panel.border = element_rect(color = "grey", fill=NA, size=2)
+    axis.text=element_text(size=14),
+    # axis.text.x = element_text(angle = 90),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
   )
-
 ggsave(
   paste0(working_directory, "plots/", "prop_viable_mutants_step-1.pdf")
 )
@@ -268,7 +326,7 @@ ggsave(
 ggplot(
     ls2_run_summary_data,
     aes(
-      x=env_condition,
+      x=env_chg_rate_label,
       y=prop_viable,
       fill=env_condition
     )
@@ -295,17 +353,18 @@ ggplot(
   scale_color_brewer(
     palette=cb_palette
   ) +
-  facet_wrap(
-    ~COPY_MUT_PROB
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
   ) +
   theme(
     legend.position="none",
-    axis.text.x = element_text(angle = 90),
-    panel.border = element_rect(color = "grey", fill=NA, size=2)
+    axis.text=element_text(size=14),
+    # axis.text.x = element_text(angle = 90),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
   )
-
 ggsave(
-  paste0(working_directory, "plots/", "prob-viable-two-step-mutants.pdf")
+  paste0(working_directory, "plots/", "prop_viable_mutants_step-2.pdf")
 )
 ```
 
@@ -317,54 +376,7 @@ ggsave(
 ggplot(
     ls1_run_summary_data,
     aes(
-      x=env_chg_rate,
-      y=num_unique_viable_phenotypes,
-      fill=env_chg_rate
-    )
-  ) +
-  geom_flat_violin(
-    position = position_nudge(x = .2, y = 0),
-    alpha = .8,
-    adjust=1.5
-  ) +
-  geom_point(
-    mapping=aes(color=env_chg_rate),
-    position = position_jitter(width = .15),
-    size = .5,
-    alpha = 0.8
-  ) +
-  geom_boxplot(
-    width = .1,
-    outlier.shape = NA,
-    alpha = 0.5
-  ) +
-  scale_fill_brewer(
-    palette=cb_palette
-  ) +
-  scale_color_brewer(
-    palette=cb_palette
-  ) +
-  facet_grid(
-    env_type~COPY_MUT_PROB
-  ) +
-  theme(
-    legend.position="none",
-    axis.text.x = element_text(angle = 90),
-    panel.border = element_rect(color = "grey", fill=NA, size=2)
-  )
-
-ggsave(
-  paste0(working_directory, "plots/", "num_unique_viable_phenotypes_mutants_step-1.pdf")
-)
-```
-
-### 2-step mutants
-
-```{r}
-ggplot(
-    ls2_run_summary_data,
-    aes(
-      x=env_condition,
+      x=env_chg_rate_label,
       y=num_unique_viable_phenotypes,
       fill=env_condition
     )
@@ -391,17 +403,64 @@ ggplot(
   scale_color_brewer(
     palette=cb_palette
   ) +
-  facet_wrap(
-    ~COPY_MUT_PROB
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
   ) +
   theme(
     legend.position="none",
-    axis.text.x = element_text(angle = 90),
-    panel.border = element_rect(color = "grey", fill=NA, size=2)
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
   )
-
 ggsave(
-  paste0(working_directory, "plots/", "num-phenotypes-two-step-mutants.pdf")
+  paste0(working_directory, "plots/", "num_unique_viable_phenotypes_step-1.pdf")
+)
+```
+
+### 2-step mutants
+
+```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_chg_rate_label,
+      y=num_unique_viable_phenotypes,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "num_unique_viable_phenotypes_step-2.pdf")
 )
 ```
 
@@ -413,54 +472,7 @@ ggsave(
 ggplot(
     ls1_run_summary_data,
     aes(
-      x=env_chg_rate,
-      y=entropy_viable_phenotypes,
-      fill=env_chg_rate
-    )
-  ) +
-  geom_flat_violin(
-    position = position_nudge(x = .2, y = 0),
-    alpha = .8,
-    adjust=1.5
-  ) +
-  geom_point(
-    mapping=aes(color=env_chg_rate),
-    position = position_jitter(width = .15),
-    size = .5,
-    alpha = 0.8
-  ) +
-  geom_boxplot(
-    width = .1,
-    outlier.shape = NA,
-    alpha = 0.5
-  ) +
-  scale_fill_brewer(
-    palette=cb_palette
-  ) +
-  scale_color_brewer(
-    palette=cb_palette
-  ) +
-  facet_grid(
-    COPY_MUT_PROB~env_type
-  ) +
-  theme(
-    legend.position="none",
-    axis.text.x = element_text(angle = 90),
-    panel.border = element_rect(color = "grey", fill=NA, size=2)
-  )
-
-ggsave(
-  paste0(working_directory, "plots/", "entropy_viable_phenotypes_mutants_step-1.pdf")
-)
-```
-
-### 2-step mutants
-
-```{r}
-ggplot(
-    ls2_run_summary_data,
-    aes(
-      x=env_condition,
+      x=env_chg_rate_label,
       y=entropy_viable_phenotypes,
       fill=env_condition
     )
@@ -487,17 +499,66 @@ ggplot(
   scale_color_brewer(
     palette=cb_palette
   ) +
-  facet_wrap(
-    ~COPY_MUT_PROB
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
   ) +
   theme(
     legend.position="none",
-    axis.text.x = element_text(angle = 90),
-    panel.border = element_rect(color = "grey", fill=NA, size=2)
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
   )
 
 ggsave(
-  paste0(working_directory, "plots/", "entropy-phenotypes-two-step-mutants.pdf")
+  paste0(working_directory, "plots/", "entropy_viable_phenotypes_step-1.pdf")
+)
+```
+
+### 2-step mutants
+
+```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_chg_rate_label,
+      y=entropy_viable_phenotypes,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "entropy_viable_phenotypes_step-2.pdf")
 )
 ```
 
@@ -509,53 +570,7 @@ ggsave(
 ggplot(
     ls1_run_summary_data,
     aes(
-      x=env_chg_rate,
-      y=avg_dist_to_ancestor,
-      fill=env_chg_rate
-    )
-  ) +
-  geom_flat_violin(
-    position = position_nudge(x = .2, y = 0),
-    alpha = .8,
-    adjust=1.5
-  ) +
-  geom_point(
-    mapping=aes(color=env_chg_rate),
-    position = position_jitter(width = .15),
-    size = .5,
-    alpha = 0.8
-  ) +
-  geom_boxplot(
-    width = .1,
-    outlier.shape = NA,
-    alpha = 0.5
-  ) +
-  scale_fill_brewer(
-    palette=cb_palette
-  ) +
-  scale_color_brewer(
-    palette=cb_palette
-  ) +
-  facet_grid(
-    COPY_MUT_PROB~env_type
-  ) +
-  theme(
-    legend.position="none",
-    axis.text.x = element_text(angle = 90),
-    panel.border = element_rect(color = "grey", fill=NA, size=2)
-  )
-ggsave(
-  paste0(working_directory, "plots/", "avg_dist_to_ancestor_mutants_step-1.pdf")
-)
-```
-
-### 2-step mutants
-
-```{r}
-ggplot(
-    ls2_run_summary_data,
-    aes(
-      x=env_condition,
+      x=env_chg_rate_label,
       y=avg_dist_to_ancestor,
       fill=env_condition
     )
@@ -582,16 +597,66 @@ ggplot(
   scale_color_brewer(
     palette=cb_palette
   ) +
-  facet_wrap(
-    ~COPY_MUT_PROB
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
   ) +
   theme(
     legend.position="none",
-    axis.text.x = element_text(angle = 90),
-    panel.border = element_rect(color = "grey", fill=NA, size=2)
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
   )
+
 ggsave(
-  paste0(working_directory, "plots/", "avg-dist-to-ancestor_mutants-step-2.pdf")
+  paste0(working_directory, "plots/", "avg_dist_to_ancestor_step-1.pdf")
+)
+```
+
+### 2-step mutants
+
+```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_chg_rate_label,
+      y=avg_dist_to_ancestor,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "avg_dist_to_ancestor_step-2.pdf")
 )
 ```
 
@@ -603,53 +668,7 @@ ggsave(
 ggplot(
     ls1_run_summary_data,
     aes(
-      x=env_chg_rate,
-      y=num_viable_mutants_gain_tasks,
-      fill=env_chg_rate
-    )
-  ) +
-  geom_flat_violin(
-    position = position_nudge(x = .2, y = 0),
-    alpha = .8,
-    adjust=1.5
-  ) +
-  geom_point(
-    mapping=aes(color=env_chg_rate),
-    position = position_jitter(width = .15),
-    size = .5,
-    alpha = 0.8
-  ) +
-  geom_boxplot(
-    width = .1,
-    outlier.shape = NA,
-    alpha = 0.5
-  ) +
-  scale_fill_brewer(
-    palette=cb_palette
-  ) +
-  scale_color_brewer(
-    palette=cb_palette
-  ) +
-  facet_grid(
-    COPY_MUT_PROB~env_type
-  ) +
-  theme(
-    legend.position="none",
-    axis.text.x = element_text(angle = 90),
-    panel.border = element_rect(color = "grey", fill=NA, size=2)
-  )
-ggsave(
-  paste0(working_directory, "plots/", "num_viable_mutants_gain_tasks_mutants_step-1.pdf")
-)
-```
-
-### 2-step mutants
-
-```{r}
-ggplot(
-    ls2_run_summary_data,
-    aes(
-      x=env_condition,
+      x=env_chg_rate_label,
       y=num_viable_mutants_gain_tasks,
       fill=env_condition
     )
@@ -676,20 +695,223 @@ ggplot(
   scale_color_brewer(
     palette=cb_palette
   ) +
-  facet_wrap(
-    ~COPY_MUT_PROB
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
   ) +
   theme(
     legend.position="none",
-    axis.text.x = element_text(angle = 90),
-    panel.border = element_rect(color = "grey", fill=NA, size=2)
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
   )
+
 ggsave(
-  paste0(working_directory, "plots/", "num-viable-gain-tasks_mutants-step-2.pdf")
+  paste0(working_directory, "plots/", "num_viable_mutants_gain_tasks_step-1.pdf")
+)
+```
+
+### 2-step mutants
+
+```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_chg_rate_label,
+      y=num_viable_mutants_gain_tasks,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "num_viable_mutants_gain_tasks_step-2.pdf")
+)
+```
+
+## num_viable_mutants_gain_multiple_tasks
+
+## 1-step mutants
+
+```{r}
+ggplot(
+    ls1_run_summary_data,
+    aes(
+      x=env_chg_rate_label,
+      y=num_viable_mutants_gain_multiple_tasks,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  scale_y_continuous(
+    # trans=log10_trans()
+    trans=pseudo_log_trans(sigma=1,base=10),
+    breaks=c(0, 10, 100, 1000)
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "num_viable_mutants_gain_multiple_tasks_step-1.pdf")
 )
 ```
 
 ## Number of viable mutants that lose tasks
+
+## 1-step mutants
+
+```{r}
+ggplot(
+    ls1_run_summary_data,
+    aes(
+      x=env_chg_rate_label,
+      y=num_viable_mutants_lose_tasks,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "num_viable_mutants_lose_tasks_step-1.pdf")
+)
+```
+
+### 2-step mutants
+
+```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_chg_rate_label,
+      y=num_viable_mutants_lose_tasks,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "num_viable_mutants_lose_tasks_step-2.pdf")
+)
+```
+
+## num_viable_mutants_lose_multiple_tasks
 
 ### 1-step mutants
 
@@ -697,53 +919,9 @@ ggsave(
 ggplot(
     ls1_run_summary_data,
     aes(
-      x=env_chg_rate,
-      y=num_viable_mutants_lose_tasks,
-      fill=env_chg_rate
-    )
-  ) +
-  geom_flat_violin(
-    position = position_nudge(x = .2, y = 0),
-    alpha = .8,
-    adjust=1.5
-  ) +
-  geom_point(
-    mapping=aes(color=env_chg_rate),
-    position = position_jitter(width = .15),
-    size = .5,
-    alpha = 0.8
-  ) +
-  geom_boxplot(
-    width = .1,
-    outlier.shape = NA,
-    alpha = 0.5
-  ) +
-  scale_fill_brewer(
-    palette=cb_palette
-  ) +
-  scale_color_brewer(
-    palette=cb_palette
-  ) +
-  facet_grid(
-    COPY_MUT_PROB~env_type
-  ) +
-  theme(
-    legend.position="none",
-    axis.text.x = element_text(angle = 90),
-    panel.border = element_rect(color = "grey", fill=NA, size=2)
-  )
-ggsave(
-  paste0(working_directory, "plots/", "num_viable_mutants_lose_tasks_mutants_step-1.pdf")
-)
-```
-
-```{r}
-ggplot(
-    ls1_run_summary_data,
-    aes(
-      x=env_chg_rate,
+      x=env_chg_rate_label,
       y=num_viable_mutants_lose_multiple_tasks,
-      fill=env_chg_rate
+      fill=env_condition
     )
   ) +
   geom_flat_violin(
@@ -752,7 +930,7 @@ ggplot(
     adjust=1.5
   ) +
   geom_point(
-    mapping=aes(color=env_chg_rate),
+    mapping=aes(color=env_condition),
     position = position_jitter(width = .15),
     size = .5,
     alpha = 0.8
@@ -769,26 +947,66 @@ ggplot(
     palette=cb_palette
   ) +
   facet_grid(
-    COPY_MUT_PROB~env_type
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
   ) +
   theme(
     legend.position="none",
-    axis.text.x = element_text(angle = 90),
-    panel.border = element_rect(color = "grey", fill=NA, size=2)
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
   )
+
 ggsave(
-  paste0(working_directory, "plots/", "num_viable_mutants_lose_multiple_tasks_mutants_step-1.pdf")
+  paste0(working_directory, "plots/", "num_viable_mutants_lose_multiple_tasks_step-1.pdf")
 )
 ```
 
 ### 2-step mutants
 
 ```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_chg_rate_label,
+      y=num_viable_mutants_lose_multiple_tasks,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
 
-```
-
-```{r}
-
+ggsave(
+  paste0(working_directory, "plots/", "num_viable_mutants_lose_multiple_tasks_step-2.pdf")
+)
 ```
 
 ## Average number of tasks lost
@@ -796,14 +1014,13 @@ ggsave(
 (when tasks are lost)
 
 ### 1-step mutants
-
 ```{r}
 ggplot(
     ls1_run_summary_data,
     aes(
-      x=env_chg_rate,
+      x=env_chg_rate_label,
       y=avg_num_tasks_lost,
-      fill=env_chg_rate
+      fill=env_condition
     )
   ) +
   geom_flat_violin(
@@ -812,7 +1029,7 @@ ggplot(
     adjust=1.5
   ) +
   geom_point(
-    mapping=aes(color=env_chg_rate),
+    mapping=aes(color=env_condition),
     position = position_jitter(width = .15),
     size = .5,
     alpha = 0.8
@@ -829,35 +1046,80 @@ ggplot(
     palette=cb_palette
   ) +
   facet_grid(
-    COPY_MUT_PROB~env_type
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
   ) +
   theme(
     legend.position="none",
-    axis.text.x = element_text(angle = 90),
-    panel.border = element_rect(color = "grey", fill=NA, size=2)
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
   )
+
 ggsave(
-  paste0(working_directory, "plots/", "avg_num_tasks_lost_mutants_step-1.pdf")
+  paste0(working_directory, "plots/", "avg_num_tasks_lost_step-1.pdf")
 )
 ```
 
 ### 2-step mutants
 
 ```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_chg_rate_label,
+      y=avg_num_tasks_lost,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
 
+ggsave(
+  paste0(working_directory, "plots/", "avg_num_tasks_lost_step-2.pdf")
+)
 ```
 
 ## Total NPMI
 
-### 1-step mutants
+total_npmi
 
+### 1-step mutants
 ```{r}
 ggplot(
     ls1_run_summary_data,
     aes(
       x=env_chg_rate_label,
       y=total_npmi,
-      fill=env_chg_rate_label
+      fill=env_condition
     )
   ) +
   geom_flat_violin(
@@ -866,7 +1128,7 @@ ggplot(
     adjust=1.5
   ) +
   geom_point(
-    mapping=aes(color=env_chg_rate_label),
+    mapping=aes(color=env_condition),
     position = position_jitter(width = .15),
     size = .5,
     alpha = 0.8
@@ -883,34 +1145,29 @@ ggplot(
     palette=cb_palette
   ) +
   facet_grid(
-    COPY_MUT_PROB~env_type_label
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
   ) +
   theme(
     legend.position="none",
-    axis.text.x = element_text(angle = 90),
-    panel.border = element_rect(color = "grey", fill=NA, size=2)
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
   )
+
 ggsave(
-  paste0(working_directory, "plots/", "total_npmi_mutants_step-1.pdf")
+  paste0(working_directory, "plots/", "total_npmi_step-1.pdf")
 )
 ```
 
 ### 2-step mutants
 
 ```{r}
-
-```
-
-## Total unexpected NPMI
-
-### 1-step mutants
-```{r}
 ggplot(
-    ls1_run_summary_data,
+    ls2_run_summary_data,
     aes(
       x=env_chg_rate_label,
-      y=unexpected_npmi,
-      fill=env_chg_rate_label
+      y=total_npmi,
+      fill=env_condition
     )
   ) +
   geom_flat_violin(
@@ -919,7 +1176,7 @@ ggplot(
     adjust=1.5
   ) +
   geom_point(
-    mapping=aes(color=env_chg_rate_label),
+    mapping=aes(color=env_condition),
     position = position_jitter(width = .15),
     size = .5,
     alpha = 0.8
@@ -936,15 +1193,213 @@ ggplot(
     palette=cb_palette
   ) +
   facet_grid(
-    COPY_MUT_PROB~env_type_label
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
   ) +
   theme(
     legend.position="none",
-    axis.text.x = element_text(angle = 90),
-    panel.border = element_rect(color = "grey", fill=NA, size=2)
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
   )
+
 ggsave(
-  paste0(working_directory, "plots/", "unexpected_npmi_mutants_step-1.pdf")
+  paste0(working_directory, "plots/", "total_npmi_step-2.pdf")
+)
+```
+
+## Total unexpected NPMI
+
+### 1-step mutants
+
+```{r}
+ggplot(
+    ls1_run_summary_data,
+    aes(
+      x=env_chg_rate_label,
+      y=unexpected_npmi,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "unexpected_npmi_step-1.pdf")
+)
+```
+
+### 2-step mutants
+
+```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_chg_rate_label,
+      y=unexpected_npmi,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "unexpected_npmi_step-2.pdf")
+)
+```
+
+## Total expected NPMI
+
+### 1-step mutants
+
+```{r}
+ggplot(
+    ls1_run_summary_data,
+    aes(
+      x=env_chg_rate_label,
+      y=expected_npmi,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "expected_npmi_step-1.pdf")
+)
+```
+
+### 2-step mutants
+
+```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_chg_rate_label,
+      y=expected_npmi,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "expected_npmi_step-2.pdf")
 )
 ```
 
@@ -977,7 +1432,7 @@ ggplot(
     legend.key.width=unit(3, "cm")
   )
 ggsave(
-  paste0(working_directory, "plots/", "npmi_matrices_mutants_step-1.pdf"),
+  paste0(working_directory, "plots/", "npmi_matrices_step-1.pdf"),
   height=15,
   width=12
 )
@@ -986,4 +1441,32 @@ ggsave(
 ### 2-step mutants
 
 ```{r}
+ggplot(
+    ls2_cooccur_data,
+    aes(
+      x=task_1_id,
+      y=task_2_id,
+      fill=npmi_avg
+    )
+  ) +
+  geom_tile() +
+  scale_fill_distiller(
+    palette = "RdBu",
+    limits=c(-1.0, 1.0),
+    breaks=c(-1, -0.5, 0.0, 0.5, 1.0)
+  ) +
+  facet_grid(
+    env_condition~COPY_MUT_PROB
+  ) +
+  ggtitle("Two-step Mutants") +
+  theme(
+    legend.position="bottom",
+    strip.text.y=element_text(size=10),
+    legend.key.width=unit(3, "cm")
+  )
+ggsave(
+  paste0(working_directory, "plots/", "npmi_matrices_step-2.pdf"),
+  height=15,
+  width=12
+)
 ```
