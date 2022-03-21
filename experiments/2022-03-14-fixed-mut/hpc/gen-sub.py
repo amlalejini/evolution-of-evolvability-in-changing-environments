@@ -295,10 +295,10 @@ def main():
             for array_id in array_id_run_info:
                 replicate_seed = array_id_to_seed[array_id]
                 run_path = os.path.join(data_dir, f"RUN_C{cond_i}_{replicate_seed}")
-                array_id_run_info[array_id]["avida"] = not os.path.exists(os.path.exists(run_path, "data", f"detail-{total_updates}.spop"))
-                array_id_run_info[array_id]["avida_analyze_mode"] = not os.path.exists(os.path.exists(run_path, "data", "analysis", "lineage.dat"))
-                array_id_run_info[array_id]["landscape_step-1"] = not os.path.exists(os.path.exists(run_path, "data", "mutants_step-1.dat"))
-                array_id_run_info[array_id]["landscape_step-2"] = not os.path.exists(os.path.exists(run_path, "data", "mutants_step-2.dat"))
+                array_id_run_info[array_id]["avida"] = not os.path.exists(os.path.join(run_path, "data", f"detail-{total_updates}.spop"))
+                array_id_run_info[array_id]["avida_analyze_mode"] = not os.path.exists(os.path.join(run_path, "data", "analysis", "lineage.dat"))
+                array_id_run_info[array_id]["landscape_step-1"] = not os.path.exists(os.path.join(run_path, "data", "mutants_step-1.dat"))
+                array_id_run_info[array_id]["landscape_step-2"] = not os.path.exists(os.path.join(run_path, "data", "mutants_step-2.dat"))
 
         # Track which array ids need to be included. If none, don't need to output this file.
         active_array_ids = []
