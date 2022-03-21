@@ -177,7 +177,10 @@ ls2_run_summary_data$env_type_label <- mapply(
 
 Load 2-step task co-occurrence data.
 ```{r}
-ls2_cooccur_data_loc <- paste0(working_directory, "data/landscape_task_cooccurrence_treatment_summary_step-2.csv")
+ls2_cooccur_data_loc <- paste0(
+  working_directory,
+  "data/landscape_task_cooccurrence_treatment_summary_step-2.csv"
+)
 ls2_cooccur_data <- read.csv(ls2_cooccur_data_loc, na.strings="NONE")
 
 ls2_cooccur_data$COPY_MUT_PROB <- as.factor(
@@ -1151,6 +1154,8 @@ ggsave(
 
 ## Total unexpected NPMI
 
+### 1-step mutants
+
 ```{r}
 ggplot(
     ls1_run_summary_data,
@@ -1247,12 +1252,107 @@ ggsave(
 
 ## Total expected NPMI
 
+### 1-step mutants
+
+```{r}
+ggplot(
+    ls1_run_summary_data,
+    aes(
+      x=env_chg_rate_label,
+      y=expected_npmi,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "expected_npmi_step-1.pdf")
+)
+```
+
+### 2-step mutants
+
+```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_chg_rate_label,
+      y=expected_npmi,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "expected_npmi_step-2.pdf")
+)
+```
+
 ## Pointwise mutual information matrices
 
 ### 1-step mutants
 
 ```{r}
-# limit <- max(abs(ls1_cooccur_data$npmi_avg)) * c(-1, 1),
 ggplot(
     ls1_cooccur_data,
     aes(
@@ -1286,7 +1386,6 @@ ggsave(
 ### 2-step mutants
 
 ```{r}
-# limit <- max(abs(ls2_cooccur_data$npmi_avg)) * c(-1, 1),
 ggplot(
     ls2_cooccur_data,
     aes(
