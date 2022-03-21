@@ -37,8 +37,14 @@ summary_data <- read.csv(summary_data_loc, na.strings="NONE")
 summary_data$COPY_MUT_PROB <- as.factor(
   summary_data$COPY_MUT_PROB
 )
-summary_data$env_chg_rate <- as.factor(
-  summary_data$env_chg_rate
+summary_data$env_chg_rate <- factor(
+  summary_data$env_chg_rate,
+  levels=c(
+    "none",
+    "30",
+    "300",
+    "3000"
+  )
 )
 summary_data$env_condition <- as.factor(
   summary_data$env_condition
@@ -47,6 +53,49 @@ summary_data$env_type <- as.factor(
   summary_data$env_type
 )
 
+get_env_chg_rate_label <- function(env_chg_rate, env_type) {
+  if (env_chg_rate == "none" && env_type=="consta") {
+    return("none-a")
+  } else if (env_chg_rate == "none" && env_type=="constb") {
+    return("none-b")
+  } else if (env_chg_rate=="30") {
+    return("30")
+  } else if (env_chg_rate=="300") {
+    return("300")
+  } else if (env_chg_rate=="3000") {
+    return("3000")
+  } else {
+    return("unknown")
+  }
+}
+get_env_type_label <- function(env_type) {
+  if (env_type=="consta" || env_type=="constb") {
+    return("const")
+  } else if (env_type=="cycling") {
+    return("cycling")
+  } else if (env_type=="random") {
+    return("random")
+  }
+}
+summary_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  summary_data$env_chg_rate,
+  summary_data$env_type
+)
+summary_data$env_chg_rate_label <- factor(
+  summary_data$env_chg_rate_label,
+  levels=c(
+    "none-a",
+    "none-b",
+    "30",
+    "300",
+    "3000"
+  )
+)
+summary_data$env_type_label <- mapply(
+  get_env_type_label,
+  summary_data$env_type
+)
 ```
 
 Load time series data.
@@ -65,6 +114,26 @@ time_series_data$env_condition <- as.factor(
   time_series_data$env_condition
 )
 time_series_data$env_type <- as.factor(
+  time_series_data$env_type
+)
+
+time_series_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  time_series_data$env_chg_rate,
+  time_series_data$env_type
+)
+time_series_data$env_chg_rate_label <- factor(
+  time_series_data$env_chg_rate_label,
+  levels=c(
+    "none-a",
+    "none-b",
+    "30",
+    "300",
+    "3000"
+  )
+)
+time_series_data$env_type_label <- mapply(
+  get_env_type_label,
   time_series_data$env_type
 )
 ```
@@ -88,7 +157,7 @@ dir.create(plot_directory, showWarnings=FALSE)
 ggplot(
     summary_data,
     aes(
-      x=env_condition,
+      x=env_chg_rate_label,
       y=final_average_copy_mutation_rate,
       fill=env_condition
     )
@@ -109,13 +178,28 @@ ggplot(
     outlier.shape = NA,
     alpha = 0.5
   ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  scale_y_continuous(
+    trans=log10_trans()
+  ) +
   facet_grid(
-    ~COPY_MUT_PROB
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
   ) +
   theme(
     legend.position="none",
-    axis.text.x = element_text(angle = 90)
+    axis.text=element_text(size=14),
+    # axis.text.x = element_text(angle = 90),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
   )
+ggsave(
+  paste0(working_directory, "plots/", "final_average_copy_mutation_rate.png")
+)
 ```
 
 ## Mutation rates over time
@@ -123,7 +207,6 @@ ggplot(
 ```{r}
 ggplot(
     time_series_data,
-    # filter(time_series_data, update > 290000 ),
     aes(
       x=update,
       y=mutation_rates_average_copy_mutation_rate,
@@ -132,26 +215,38 @@ ggplot(
     )
   ) +
   stat_summary(geom="line", fun=mean) +
+  # stat_summary(
+  #   geom="ribbon",
+  #   fun.data="mean_cl_boot",
+  #   fun.args=list(conf.int=0.95),
+  #   alpha=0.2,
+  #   linetype=0
+  # ) +
   stat_summary(
     geom="ribbon",
-    fun.data="mean_cl_boot",
-    fun.args=list(conf.int=0.95),
+    fun.min=min,
+    fun.max=max,
     alpha=0.2,
     linetype=0
   ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
   scale_y_continuous(
-    # trans=pseudo_log_trans(sigma=1,base=10)
     trans=log10_trans()
   ) +
   facet_grid(
-    ~COPY_MUT_PROB
+    COPY_MUT_PROB~env_type_label
   ) +
   theme(
     legend.position="bottom"
   )
 
 ggsave(
-  paste0(working_directory, "plots/", "average_copy_mutation_rate_ot.pdf"),
+  paste0(working_directory, "plots/", "average_copy_mutation_rate_ot.png"),
   width=15,
   height=10
 )
@@ -162,7 +257,6 @@ ggsave(
 ```{r}
 ggplot(
     time_series_data,
-    # filter(time_series_data, update>250000),
     aes(
       x=update,
       y=avg_fitness,
@@ -178,20 +272,83 @@ ggplot(
     alpha=0.2,
     linetype=0
   ) +
+  # stat_summary(
+  #   geom="ribbon",
+  #   fun.min=min,
+  #   fun.max=max,
+  #   alpha=0.2,
+  #   linetype=0
+  # ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
   scale_y_continuous(
-    # trans=pseudo_log_trans(sigma=1,base=10)
     trans=log10_trans()
   ) +
   facet_grid(
-    COPY_MUT_PROB~env_type
+    COPY_MUT_PROB~env_type_label
   ) +
   theme(
     legend.position="bottom"
   )
 
 ggsave(
-  paste0(working_directory, "plots/", "average_fitness_ot.pdf"),
-  width=18,
+  paste0(working_directory, "plots/", "avg_fitness_ot.png"),
+  width=15,
   height=10
+)
+```
+
+## dom_lineage_length_genotypes
+
+```{r}
+ggplot(
+    summary_data,
+    aes(
+      x=env_chg_rate_label,
+      y=dom_lineage_length_genotypes,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  scale_y_continuous(
+    trans=log10_trans()
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    # axis.text.x = element_text(angle = 90),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "dom_lineage_length_genotypes.png")
 )
 ```
