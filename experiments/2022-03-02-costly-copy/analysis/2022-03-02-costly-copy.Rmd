@@ -69,7 +69,7 @@ Miscellaneous setup.
 # Configure our default graphing theme
 theme_set(theme_cowplot())
 # Palette
-cb_palette <- "Set2"
+cb_palette <- "Dark2"
 alpha <- 0.05
 # Create a directory to store plots
 plot_directory <- paste0(working_directory, "plots/")
@@ -80,7 +80,7 @@ dir.create(plot_directory, showWarnings=FALSE)
 
 ```{r}
 ggplot(
-    filter(summary_data, env_cond=="const-a"),
+    summary_data,
     aes(
       x=MAX_HEAD_COPY_COST,
       y=dom_match_score_env_a,
@@ -103,47 +103,28 @@ ggplot(
     outlier.shape = NA,
     alpha = 0.5
   ) +
-  facet_grid(
-    env_cond~COPY_MUT_PROB
+  scale_fill_brewer(
+    palette=cb_palette
   ) +
-  scale_y_continuous(
-    limits=c(0, 7)
-  ) +
-  theme(legend.position="none")
-```
-
-```{r}
-ggplot(
-    filter(summary_data, env_cond=="const-b"),
-    aes(
-      x=MAX_HEAD_COPY_COST,
-      y=dom_match_score_env_b,
-      fill=MAX_HEAD_COPY_COST
-    )
-  ) +
-  geom_flat_violin(
-    position = position_nudge(x = .2, y = 0),
-    alpha = .8,
-    adjust=1.5
-  ) +
-  geom_point(
-    mapping=aes(color=MAX_HEAD_COPY_COST),
-    position = position_jitter(height=0.1, width = .15),
-    size = .5,
-    alpha = 0.8
-  ) +
-  geom_boxplot(
-    width = .1,
-    outlier.shape = NA,
-    alpha = 0.5
+  scale_color_brewer(
+    palette=cb_palette
   ) +
   facet_grid(
     env_cond~COPY_MUT_PROB
   ) +
   scale_y_continuous(
-    limits=c(0, 7)
+    limits=c(-0.5, 7),
+    breaks=c(0, 2, 4, 6)
   ) +
-  theme(legend.position="none")
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    # axis.text.x = element_text(angle = 90),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "dom_match_score_env_a.pdf")
+)
 ```
 
 ## Final mutation rates
@@ -164,7 +145,6 @@ ggplot(
   ) +
   geom_point(
     mapping=aes(color=MAX_HEAD_COPY_COST),
-    # position = position_jitter(height=0.1, width = .15),
     size = .5,
     alpha = 0.8
   ) +
@@ -173,15 +153,24 @@ ggplot(
     outlier.shape = NA,
     alpha = 0.5
   ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
   facet_grid(
     env_cond~COPY_MUT_PROB
   ) +
-  # scale_y_continuous(
-  #   trans=pseudo_log_trans(sigma=1,base=10)
-  # ) +
+  scale_y_continuous(
+    # trans=pseudo_log_trans(sigma=1,base=10)
+    trans=log10_trans()
+  ) +
   theme(
     legend.position="none",
-    panel.border = element_rect(color = "grey", fill=NA, size=2)
+    axis.text=element_text(size=14),
+    # axis.text.x = element_text(angle = 90),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
   )
 
 ggsave(
@@ -193,8 +182,7 @@ ggsave(
 
 ```{r}
 ggplot(
-    time_series_data,
-    # filter(time_series_data, env_cond=="const-a" & COPY_MUT_PROB=="0.001" ),
+    filter(time_series_data, (update%%1000)==0),
     aes(
       x=update,
       y=mutation_rates_average_copy_mutation_rate,
@@ -210,16 +198,33 @@ ggplot(
     alpha=0.2,
     linetype=0
   ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  scale_y_continuous(
+    trans=log10_trans()
+  ) +
   facet_grid(
     env_cond~COPY_MUT_PROB
   ) +
   theme(
-    legend.position="bottom"
+    legend.position="bottom",
+    axis.text=element_text(size=14),
+    # axis.text.x = element_text(angle = 90),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
   )
 
 ggsave(
   paste0(working_directory, "plots/", "average_copy_mutation_rate_ot.pdf"),
   width=20,
   height=20
+)
+ggsave(
+  paste0(working_directory, "plots/", "average_copy_mutation_rate_ot.png"),
+  width=10,
+  height=10
 )
 ```
