@@ -264,14 +264,15 @@ def main():
         # Extract average.dat data
         average_data = utils.read_avida_dat_file(os.path.join(run_path, "data", "average.dat"))
         final_average_data = [line for line in average_data if int(line["update"]) == update][0]
-
         average_data_ts = {line["update"]: {field: line[field] for field in average_data_time_series_fields} for line in average_data if keep_line(int(line["update"]))}
         # Summary info
         summary_info["avg_fitness"] = final_average_data["fitness"]
+        summary_info["avg_true_replication_rate"] = final_average_data["true_replication_rate_(based_on_births/update,_time-averaged)"]
 
         # Average fitness over time
         for u in time_series_update_set:
             time_series_info[u]["avg_fitness"] = average_data_ts[u]["fitness"]
+            time_series_info[u]["avg_true_replication_rate"] = average_data_ts[u]["true_replication_rate_(based_on_births/update,_time-averaged)"]
 
         average_data = None
         average_data_ts = None
