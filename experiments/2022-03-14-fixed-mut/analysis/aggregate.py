@@ -26,7 +26,8 @@ mutation_rates_time_series_fields = [
 ]
 
 average_data_time_series_fields = [
-    "fitness"
+    "fitness",
+    "true_replication_rate_(based_on_births/update,_time-averaged)"
 ]
 
 pop_tasks_time_series_fields = [task for task in tasks_primary]
