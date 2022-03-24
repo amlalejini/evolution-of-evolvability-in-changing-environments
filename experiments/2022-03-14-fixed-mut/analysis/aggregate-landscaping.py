@@ -403,6 +403,13 @@ def main():
             info["count_env_a"] = distances_to_env_a[dist]
             info["count_env_b"] = distances_to_env_b[dist]
             phen_distance_distribution_info.append(info)
+        # add non-viable info to phenotypic distance distribution
+        info = {field:run_summary_info[field] for field in phen_distance_distribution_identifiers}
+        info["distance"] = -1
+        info["replicate_id"] = cur_run_i
+        info["count_env_a"] = num_nonviable
+        info["count_env_b"] = num_nonviable
+        phen_distance_distribution_info.append(info)
 
         # Fill out mutant phenotype distribution
         mutant_phenotype_info["nonviable"] = {
