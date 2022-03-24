@@ -44,6 +44,14 @@ phen_distance_distribution_identifiers = [
     "RANDOM_SEED"
 ]
 
+mutant_phen_distribution_identifiers = [
+    "env_condition",
+    "env_type",
+    "env_chg_rate",
+    "COPY_MUT_PROB",
+    "RANDOM_SEED"
+]
+
 run_command_excludes = {}
 
 def main():
@@ -85,6 +93,12 @@ def main():
     phen_distance_distribution_header = None
     phen_distance_distribution_lines = []
 
+    mutant_phen_distribution_header = None
+    mutant_phen_distribution_fname = f"mutant_phen_distribution_{output_id}.csv" if output_id != "" else f"mutant_phen_distribution.csv"
+    mutant_phen_distribution_fpath = os.path.join(dump_dir, mutant_phen_distribution_fname)
+    with open(mutant_phen_distribution_fpath, "w") as fp:
+        fp.write("")
+
     # Loop over runs, aggregating data from each.
     incomplete_runs = []
     total_runs = len(run_dirs)
@@ -95,6 +109,7 @@ def main():
         run_summary_info = {}                   # Hold summary information about run. Indexed by field.
         task_cooccurrence_info = []             # List of dictionaries
         phen_distance_distribution_info = []    # List of dictionaries
+        mutant_phen_distribution_info = []      # List of dictionaries
 
         cur_run_i += 1
         print(f"Processing ({cur_run_i}/{total_runs}): {run_path}")
@@ -149,9 +164,19 @@ def main():
         orig_sequence_info["match_score_env_a"] = utils.simple_match_coeff(orig_phenotype, profile_env_a)
         orig_sequence_info["match_score_env_b"] = utils.simple_match_coeff(orig_phenotype, profile_env_b)
         orig_sequence_info["tasks_performed"] = {task for task in tasks_primary if int(orig_sequence_info[task]) > 0}
+        mutant_phenotype_info = {
+            orig_phenotype: {
+                "match_score_a": orig_sequence_info["match_score_env_a"],
+                "match_score_b": orig_sequence_info["match_score_env_b"],
+                "is_ancestor": "1",
+                "count": 1,
+                "dist_to_ancestor": 0
+            }
+        }
 
         total_mutants = len(mutant_data)
         num_viable = 0
+        num_nonviable = 0
         num_viable_mutants_lose_tasks = 0
         num_viable_mutants_lose_multiple_tasks = 0
         num_viable_mutants_gain_tasks = 0
@@ -163,11 +188,14 @@ def main():
         distances_to_env_b = {i:0 for i in range(0, len(profile_env_b)+1)}
         task_occurrence_counts = {task: 0 for task in tasks_primary}
         task_cooccurrence_counts = {frozenset(pair): 0 for pair in itertools.combinations(tasks_primary, 2)}
+        # mutant_phenotype_distribution = {orig_phenotype: 1}
         for mutant in mutant_data:
             viable = int(mutant["is_viable_(0/1)"])
             mutant["viable"] = bool(viable)
             # If this mutant isn't viable, skip it.
-            if viable == 0: continue
+            if viable == 0:
+                num_nonviable += 1
+                continue
             # Otherwise, increment number of viable mutants.
             num_viable += 1
             # Count occurrence and co-occurrence
@@ -196,6 +224,16 @@ def main():
             dist_to_env_b = utils.hamming_dist(phenotype, profile_env_b)
             distances_to_env_a[dist_to_env_a] += 1
             distances_to_env_b[dist_to_env_b] += 1
+
+            # Update phenotype in distribution
+            if not phenotype in mutant_phenotype_info:
+                mutant_phenotype_info[phenotype] = {}
+                mutant_phenotype_info[phenotype]["match_score_a"] = match_score_env_a
+                mutant_phenotype_info[phenotype]["match_score_b"] = match_score_env_b
+                mutant_phenotype_info[phenotype]["is_ancestor"] = "0"
+                mutant_phenotype_info[phenotype]["count"] = 0
+                mutant_phenotype_info[phenotype]["dist_to_ancestor"] = dist_to_ancestor
+            mutant_phenotype_info[phenotype]["count"] += 1
 
             num_viable_mutants_lose_tasks += int(len(tasks_lost) > 0)
             num_viable_mutants_lose_multiple_tasks += int(len(tasks_lost) > 1)
@@ -365,6 +403,21 @@ def main():
             info["count_env_a"] = distances_to_env_a[dist]
             info["count_env_b"] = distances_to_env_b[dist]
             phen_distance_distribution_info.append(info)
+
+        # Fill out mutant phenotype distribution
+        mutant_phenotype_info["nonviable"] = {
+            "match_score_a": "-1",
+            "match_score_b": "-1",
+            "is_ancestor": "0",
+            "count": num_nonviable,
+            "dist_to_ancestor": "-1"
+        }
+        for phen in mutant_phenotype_info:
+            line_info = {field:run_summary_info[field] for field in mutant_phen_distribution_identifiers}
+            for field in mutant_phenotype_info[phen]:
+                line_info[field] = mutant_phenotype_info[phen][field]
+            line_info["phenotype"] = phen
+            mutant_phen_distribution_info.append(line_info)
         ############################################################
 
         ############################################################
@@ -390,6 +443,28 @@ def main():
         for info in phen_distance_distribution_info:
             line = [str(info[field]) for field in phen_distance_distribution_fields]
             phen_distance_distribution_lines.append(",".join(line))
+        ############################################################
+
+        ############################################################
+        # Add lines to the mutant phenotype distribution file
+        write_header = False
+        mutant_phen_distribution_fields = sorted(list(mutant_phen_distribution_info[0]))
+        if mutant_phen_distribution_header == None:
+            write_header = True
+            mutant_phen_distribution_header = mutant_phen_distribution_fields
+        elif mutant_phen_distribution_header != mutant_phen_distribution_fields:
+            print("mutant_phen_distribution_header mismatch!")
+            exit(-1)
+        mutant_phen_distribution_lines = "\n".join([
+            ",".join([str(info[field]) for field in mutant_phen_distribution_fields])
+            for info in mutant_phen_distribution_info
+        ])
+        with open(mutant_phen_distribution_fpath, "a") as fp:
+            if write_header:
+                fp.write(",".join(mutant_phen_distribution_header))
+            fp.write("\n")
+            fp.write(mutant_phen_distribution_lines)
+        mutant_phen_distribution_info = []
         ############################################################
 
         ############################################################
