@@ -36,6 +36,14 @@ task_cooccur_identifiers = [
     "RANDOM_SEED"
 ]
 
+phen_distance_distribution_identifiers = [
+    "env_condition",
+    "env_type",
+    "env_chg_rate",
+    "COPY_MUT_PROB",
+    "RANDOM_SEED"
+]
+
 run_command_excludes = {}
 
 def main():
@@ -74,22 +82,32 @@ def main():
     task_cooccurrence_header = None
     task_cooccurrence_content_lines = []
 
+    phen_distance_distribution_header = None
+    phen_distance_distribution_lines = []
+
     # Loop over runs, aggregating data from each.
+    incomplete_runs = []
     total_runs = len(run_dirs)
     cur_run_i = 0
     for run_dir in run_dirs:
         run_path = os.path.join(data_dir, run_dir)
 
-        # Skip over (but make note of) incomplete runs.
-        if not os.path.exists(os.path.join(run_path, 'data', 'analysis')):
-            print('Skipping: ', run_path)
-            continue
-
         run_summary_info = {}                   # Hold summary information about run. Indexed by field.
         task_cooccurrence_info = []             # List of dictionaries
+        phen_distance_distribution_info = []    # List of dictionaries
 
         cur_run_i += 1
         print(f"Processing ({cur_run_i}/{total_runs}): {run_path}")
+
+        # Skip over (but make note of) incomplete runs.
+        required_files = [
+            os.path.join("data", mutant_file),
+            os.path.join("cmd.log")
+        ]
+        if any([not os.path.exists(os.path.join(run_path, req)) for req in required_files]):
+            print("  - Failed to find all required files!")
+            incomplete_runs.append(run_dir)
+            continue
 
         ############################################################
         # Extract commandline configuration settings (from cmd.log file)
@@ -141,6 +159,8 @@ def main():
         num_viable_mutants_improve_env_a = 0
         num_viable_mutants_improve_env_b = 0
         viable_phenotypes = []
+        distances_to_env_a = {i:0 for i in range(0, len(profile_env_a)+1)}
+        distances_to_env_b = {i:0 for i in range(0, len(profile_env_b)+1)}
         task_occurrence_counts = {task: 0 for task in tasks_primary}
         task_cooccurrence_counts = {frozenset(pair): 0 for pair in itertools.combinations(tasks_primary, 2)}
         for mutant in mutant_data:
@@ -172,6 +192,10 @@ def main():
             improves_env_b = match_score_env_b > orig_sequence_info["match_score_env_b"]
             match_chg_toward_a = match_score_env_a - orig_sequence_info["match_score_env_a"]
             match_chg_toward_b = match_score_env_b - orig_sequence_info["match_score_env_b"]
+            dist_to_env_a = utils.hamming_dist(phenotype, profile_env_a)
+            dist_to_env_b = utils.hamming_dist(phenotype, profile_env_b)
+            distances_to_env_a[dist_to_env_a] += 1
+            distances_to_env_b[dist_to_env_b] += 1
 
             num_viable_mutants_lose_tasks += int(len(tasks_lost) > 0)
             num_viable_mutants_lose_multiple_tasks += int(len(tasks_lost) > 1)
@@ -332,6 +356,15 @@ def main():
             pair_info["joint_prob"] = task_cooccurrence_probs[pair]
             pair_info["joint_count"] = task_cooccurrence_counts[pair]
             treatment_cooccurrence_summary_info[treatment_id][task_ij].append(pair_info)
+
+        # Fill out phenotypic distribution info for this run
+        for dist in range(0, len(profile_all)+1):
+            info = {field:run_summary_info[field] for field in phen_distance_distribution_identifiers}
+            info["distance"] = dist
+            info["replicate_id"] = cur_run_i
+            info["count_env_a"] = distances_to_env_a[dist]
+            info["count_env_b"] = distances_to_env_b[dist]
+            phen_distance_distribution_info.append(info)
         ############################################################
 
         ############################################################
@@ -344,6 +377,19 @@ def main():
             exit(-1)
         run_summary_line = [str(run_summary_info[field]) for field in run_summary_fields]
         run_summary_content_lines.append(",".join(run_summary_line))
+        ############################################################
+
+        ############################################################
+        # Add lines to distances distribution
+        phen_distance_distribution_fields = sorted(list(phen_distance_distribution_info[0]))
+        if phen_distance_distribution_header == None:
+            phen_distance_distribution_header = phen_distance_distribution_fields
+        elif phen_distance_distribution_header != phen_distance_distribution_fields:
+            print("Phenotype distance distribution header mismatch!")
+            exit(-1)
+        for info in phen_distance_distribution_info:
+            line = [str(info[field]) for field in phen_distance_distribution_fields]
+            phen_distance_distribution_lines.append(",".join(line))
         ############################################################
 
         ############################################################
@@ -375,6 +421,15 @@ def main():
         out_content = ",".join(task_cooccurrence_header) + "\n" + "\n".join(task_cooccurrence_content_lines)
         fp.write(out_content)
     task_cooccurrence_content_lines = None
+    ############################################################
+
+    ############################################################
+    # Write out phenotype distribution data
+    fname = f"mutant_phenotype_distances_{output_id}.csv" if output_id != "" else "mutant_phenotype_distances.csv"
+    with open(os.path.join(dump_dir, fname), "w") as fp:
+        out_content = ",".join(phen_distance_distribution_header) + "\n" + "\n".join(phen_distance_distribution_lines)
+        fp.write(out_content)
+    phen_distance_distribution_lines=None
     ############################################################
 
     ############################################################
@@ -425,6 +480,11 @@ def main():
         fp.write(out_content)
     treatment_summary_lines = None
     ############################################################
+
+    # Write out incomplete runs, sort them!
+    incomplete_runs.sort()
+    with open(os.path.join(dump_dir, f"incomplete_runs_landscape_{output_id}.log"), "w") as fp:
+        fp.write("\n".join(incomplete_runs))
 
 if __name__ == "__main__":
     main()
