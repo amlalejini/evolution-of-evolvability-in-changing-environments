@@ -201,6 +201,57 @@ ggsave(
 )
 ```
 
+## True replication rate over time
+
+```{r}
+ggplot(
+    time_series_data,
+    # filter(time_series_data, update>290000),
+    aes(
+      x=update,
+      y=avg_true_replication_rate,
+      fill=env_condition,
+      color=env_condition
+    )
+  ) +
+  stat_summary(geom="line", fun=mean) +
+  stat_summary(
+    geom="ribbon",
+    fun.data="mean_cl_boot",
+    fun.args=list(conf.int=0.95),
+    alpha=0.2,
+    linetype=0
+  ) +
+  # stat_summary(
+  #   geom="ribbon",
+  #   fun.min=min,
+  #   fun.max=max,
+  #   alpha=0.2,
+  #   linetype=0
+  # ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  scale_y_continuous(
+    trans=log10_trans()
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label
+  ) +
+  theme(
+    legend.position="bottom"
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "avg_true_replication_rate_ot.pdf"),
+  width=15,
+  height=10
+)
+```
+
 ## Dominant lineage length (genotypes)
 
 ```{r}
@@ -310,6 +361,7 @@ Genotypic Diversity (entropy of taxa in population).
 ```{r}
 ggplot(
     summary_data,
+    # filter(summary_data, COPY_MUT_PROB=="0.01"),
     aes(
       x=env_chg_rate_label,
       y=phylo_diversity,
@@ -338,6 +390,9 @@ ggplot(
   scale_color_brewer(
     palette=cb_palette
   ) +
+  # scale_y_continuous(
+  #   trans=log10_trans()
+  # ) +
   facet_grid(
     COPY_MUT_PROB~env_type_label,
     scales="free"
@@ -349,7 +404,7 @@ ggplot(
     panel.border = element_rect(color = "grey", fill=NA, size=1.5)
   )
 ggsave(
-  paste0(working_directory, "plots/", "genetic_diversity.pdf")
+  paste0(working_directory, "plots/", "genetic_diversity.png")
 )
 ```
 

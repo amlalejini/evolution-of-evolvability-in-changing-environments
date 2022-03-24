@@ -17,6 +17,7 @@ library(ggplot2)
 library(scales)
 library(cowplot)
 library(RColorBrewer)
+library(viridis)
 source("https://gist.githubusercontent.com/benmarwick/2a1bb0133ff568cbe28d/raw/fb53bd97121f7f9ce947837ef1a4c65a73bffb3f/geom_flat_violin.R")
 ```
 
@@ -29,6 +30,7 @@ print(version)
 ### Load data
 
 Load 1-step landscape data
+
 ```{r}
 ls1_run_summary_data_loc <- paste0(working_directory, "data/landscape_run_summary_step-1.csv")
 ls1_run_summary_data <- read.csv(ls1_run_summary_data_loc, na.strings="NONE")
@@ -136,7 +138,90 @@ ls1_cooccur_data$env_type_label <- mapply(
 )
 ```
 
+Load 1-step mutant phenotype distance distributions
+
+```{r}
+ls1_phen_dists_data_loc <- paste0(working_directory, "data/mutant_phenotype_distances_step-1.csv")
+ls1_phen_dists_data <- read.csv(ls1_phen_dists_data_loc, na.strings="NONE")
+
+ls1_phen_dists_data$COPY_MUT_PROB <- as.factor(
+  ls1_phen_dists_data$COPY_MUT_PROB
+)
+ls1_phen_dists_data$env_chg_rate <- as.factor(
+  ls1_phen_dists_data$env_chg_rate
+)
+ls1_phen_dists_data$env_condition <- as.factor(
+  ls1_phen_dists_data$env_condition
+)
+ls1_phen_dists_data$env_type <- as.factor(
+  ls1_phen_dists_data$env_type
+)
+ls1_phen_dists_data$distance <- factor(
+  ls1_phen_dists_data$distance,
+  levels=c(
+    -1,
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  )
+)
+
+# Hacky/inefficient way to assign rep_ids based on replicate_id ordering
+ls1_simplify_replicate_id <- function(e, m, rep_id) {
+  treatment_data <- filter(
+    ls1_phen_dists_data,
+    (env_condition==e) & (COPY_MUT_PROB==m)
+  )
+  rep_ids <- as.integer(levels(factor(treatment_data$replicate_id)))
+  rep_id_map <- as.data.frame(rep_ids)
+  rep_id_map$order <- order(rep_id_map$rep_ids)
+  return(filter(rep_id_map, rep_ids==rep_id)$order)
+}
+ls1_phen_dists_data$rep_id <- mapply(
+  ls1_simplify_replicate_id,
+  ls1_phen_dists_data$env_condition,
+  ls1_phen_dists_data$COPY_MUT_PROB,
+  ls1_phen_dists_data$replicate_id
+)
+ls1_phen_dists_data$rep_id <- as.factor(
+  ls1_phen_dists_data$rep_id
+)
+
+
+ls1_phen_dists_data$replicate_id <- as.factor(
+  ls1_phen_dists_data$replicate_id
+)
+ls1_phen_dists_data$RANDOM_SEED <- as.factor(
+  ls1_phen_dists_data$RANDOM_SEED
+)
+
+ls1_phen_dists_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  ls1_phen_dists_data$env_chg_rate,
+  ls1_phen_dists_data$env_type
+)
+ls1_phen_dists_data$env_chg_rate_label <- factor(
+  ls1_phen_dists_data$env_chg_rate_label,
+  levels=c(
+    "none-a",
+    "none-b",
+    "30",
+    "300",
+    "3000"
+  )
+)
+ls1_phen_dists_data$env_type_label <- mapply(
+  get_env_type_label,
+  ls1_phen_dists_data$env_type
+)
+```
+
 Load 2-step landscape data
+
 ```{r}
 ls2_run_summary_data_loc <- paste0(working_directory, "data/landscape_run_summary_step-2.csv")
 ls2_run_summary_data <- read.csv(ls2_run_summary_data_loc, na.strings="NONE")
@@ -220,6 +305,88 @@ ls2_cooccur_data$env_chg_rate_label <- factor(
 ls2_cooccur_data$env_type_label <- mapply(
   get_env_type_label,
   ls2_cooccur_data$env_type
+)
+```
+
+Load 2-step phenotype distance distribution data
+
+```{r}
+ls2_phen_dists_data_loc <- paste0(working_directory, "data/mutant_phenotype_distances_step-2.csv")
+ls2_phen_dists_data <- read.csv(ls2_phen_dists_data_loc, na.strings="NONE")
+
+ls2_phen_dists_data$COPY_MUT_PROB <- as.factor(
+  ls2_phen_dists_data$COPY_MUT_PROB
+)
+ls2_phen_dists_data$env_chg_rate <- as.factor(
+  ls2_phen_dists_data$env_chg_rate
+)
+ls2_phen_dists_data$env_condition <- as.factor(
+  ls2_phen_dists_data$env_condition
+)
+ls2_phen_dists_data$env_type <- as.factor(
+  ls2_phen_dists_data$env_type
+)
+
+ls2_phen_dists_data$distance <- factor(
+  ls2_phen_dists_data$distance,
+  levels=c(
+    -1,
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  )
+)
+
+# Hacky/inefficient way to assign rep_ids based on replicate_id ordering
+ls2_simplify_replicate_id <- function(e, m, rep_id) {
+  treatment_data <- filter(
+    ls2_phen_dists_data,
+    (env_condition==e) & (COPY_MUT_PROB==m)
+  )
+  rep_ids <- as.integer(levels(factor(treatment_data$replicate_id)))
+  rep_id_map <- as.data.frame(rep_ids)
+  rep_id_map$order <- order(rep_id_map$rep_ids)
+  return(filter(rep_id_map, rep_ids==rep_id)$order)
+}
+ls2_phen_dists_data$rep_id <- mapply(
+  ls2_simplify_replicate_id,
+  ls2_phen_dists_data$env_condition,
+  ls2_phen_dists_data$COPY_MUT_PROB,
+  ls2_phen_dists_data$replicate_id
+)
+ls2_phen_dists_data$rep_id <- as.factor(
+  ls2_phen_dists_data$rep_id
+)
+
+ls2_phen_dists_data$replicate_id <- as.factor(
+  ls2_phen_dists_data$replicate_id
+)
+ls2_phen_dists_data$RANDOM_SEED <- as.factor(
+  ls2_phen_dists_data$RANDOM_SEED
+)
+
+ls2_phen_dists_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  ls2_phen_dists_data$env_chg_rate,
+  ls2_phen_dists_data$env_type
+)
+ls2_phen_dists_data$env_chg_rate_label <- factor(
+  ls2_phen_dists_data$env_chg_rate_label,
+  levels=c(
+    "none-a",
+    "none-b",
+    "30",
+    "300",
+    "3000"
+  )
+)
+ls2_phen_dists_data$env_type_label <- mapply(
+  get_env_type_label,
+  ls2_phen_dists_data$env_type
 )
 ```
 
@@ -1413,5 +1580,66 @@ ggsave(
   paste0(working_directory, "plots/", "npmi_matrices_step-2.pdf"),
   height=15,
   width=12
+)
+```
+
+## Distribution of mutant phenotypes
+
+### 1-step mutants
+
+```{r}
+ggplot(
+    # filter(ls1_phen_dists_data, env_condition=="env-consta"),
+    ls1_phen_dists_data,
+    aes(
+      x=rep_id,
+      y=count_env_a,
+      fill=distance
+    )
+  ) +
+  geom_bar(position="stack", stat="identity") +
+  scale_fill_viridis(discrete=TRUE, direction=-1) +
+  facet_grid(
+    env_condition~COPY_MUT_PROB,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="bottom",
+    axis.text.x=element_text(size=10)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "mutant_phen_dist_env_a_step-1.pdf"),
+  width=15,
+  height=18
+)
+
+```
+
+### 2-step mutants
+
+```{r}
+ggplot(
+    # filter(ls1_phen_dists_data, env_condition=="env-consta"),
+    ls2_phen_dists_data,
+    aes(
+      x=rep_id,
+      y=count_env_a,
+      fill=distance
+    )
+  ) +
+  geom_bar(position="stack", stat="identity") +
+  scale_fill_viridis(discrete=TRUE, direction=-1) +
+  facet_grid(
+    env_condition~COPY_MUT_PROB,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="bottom",
+    axis.text.x=element_text(size=10)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "mutant_phen_dist_env_a_step-2.pdf"),
+  width=15,
+  height=18
 )
 ```
