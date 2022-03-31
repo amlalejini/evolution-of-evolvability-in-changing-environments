@@ -160,8 +160,9 @@ def main():
 
     # Clean up intermediate files
     if do_cleanup:
-        clean_up_cmd = ";".join(f"rm {file}" for file in ko_dat_files)
-        subprocess.run(clean_up_cmd, shell=True)
+        for file in ko_dat_files:
+            clean_up_cmd = f"rm {file}"
+            subprocess.run(clean_up_cmd, shell=True)
         subprocess.run(f"rmdir {os.path.join(run_dir, 'data', 'knockouts')}", shell=True)
         subprocess.run(f"rm {os.path.join(run_dir, ko_analyze_fname)}", shell=True)
     print("Done.")
