@@ -283,10 +283,11 @@ def main():
         # By default, add all commands to submission file.
         array_id_run_info = {
             array_id: {
-                "avida": True,
+                "avida": False,
                 "avida_analyze_mode": True,
-                "landscape_step-1": True,
-                "landscape_step-2": True
+                "landscape_step-1": False,
+                "landscape_step-2": False,
+                "knockouts": True
             }
             for array_id in range(1, num_replicates+1)
         }
@@ -299,6 +300,7 @@ def main():
                 array_id_run_info[array_id]["avida_analyze_mode"] = not os.path.exists(os.path.join(run_path, "data", "analysis", "lineage.dat"))
                 array_id_run_info[array_id]["landscape_step-1"] = not os.path.exists(os.path.join(run_path, "data", "mutants_step-1.dat"))
                 array_id_run_info[array_id]["landscape_step-2"] = not os.path.exists(os.path.join(run_path, "data", "mutants_step-2.dat"))
+                array_id_run_info[array_id]["knockouts"] = not os.path.exists(os.path.join(run_path, "data", "knockouts.csv"))
 
         # Track which array ids need to be included. If none, don't need to output this file.
         active_array_ids = []
@@ -327,7 +329,7 @@ def main():
                 analysis_commands += './${EXEC} ${RUN_PARAMS} -a\n'
 
             # (3) Run mutational landscaping
-            landscape_commands = ''
+            landscape_commands = ""
             landscape_commands += "cd ${REPO_DIR}\n"
             # -- step 1 mutants --
             if array_id_run_info[array_id]["landscape_step-1"]:
@@ -339,9 +341,19 @@ def main():
                 landscape_commands += gen_2step_mutants_cmd + "\n"
             landscape_commands += "cd ${RUN_DIR}\n"
 
+            # (4) Generate knockouts
+            knockout_commands = ""
+            knockout_commands += "cd ${REPO_DIR}\n"
+            if array_id_run_info[array_id]["knockouts"]:
+                knockout_commands += 'python scripts/gen-knockouts.py --inst_set ${CONFIG_DIR}/instset-heads.cfg --input ${RUN_DIR}/data/analysis/lineage.dat --num_tasks 6 --avida_args "${RUN_PARAMS}" --run_dir ${RUN_DIR} --output knockouts.csv --cleanup'
+                knockout_commands += "\n"
+            knockout_commands += "cd ${RUN_DIR}\n"
+
+
             run_logic += run_commands
             run_logic += analysis_commands
             run_logic += landscape_commands
+            run_logic += knockout_commands
             run_logic += "fi\n\n"
             run_sub_logic += run_logic
 
