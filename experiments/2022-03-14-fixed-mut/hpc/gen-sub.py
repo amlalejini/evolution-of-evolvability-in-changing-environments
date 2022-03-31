@@ -345,7 +345,7 @@ def main():
             knockout_commands = ""
             knockout_commands += "cd ${REPO_DIR}\n"
             if array_id_run_info[array_id]["knockouts"]:
-                knockout_commands += 'python scripts/gen-knockouts.py --inst_set ${CONFIG_DIR}/instset-heads.cfg --input ${RUN_DIR}/data/analysis/lineage.dat --num_tasks 6 --avida_args "${RUN_PARAMS}" --run_dir ${RUN_DIR} --output knockouts.csv --cleanup'
+                knockout_commands += 'python scripts/gen-knockouts.py --inst_set ${CONFIG_DIR}/instset-heads-ko.cfg --input ${RUN_DIR}/data/analysis/lineage.dat --num_tasks 6 --avida_args "${RUN_PARAMS}" --run_dir ${RUN_DIR} --output knockouts.csv --cleanup'
                 knockout_commands += "\n"
             knockout_commands += "cd ${RUN_DIR}\n"
 
