@@ -17,6 +17,7 @@ TS_RANGE_1=${UPDATE}
 
 MUTANT_1STEP_FILE=mutants_step-1.dat
 MUTANT_2STEP_FILE=mutants_step-2.dat
+KO_FILE=knockouts.csv
 
 REPO_DIR=/mnt/home/lalejini/devo_ws/${PROJECT_NAME}
 ANALYSIS_DIR=${REPO_DIR}/experiments/${EXP_SLUG}/analysis
@@ -42,4 +43,4 @@ source load-hpc-env
 # python aggregate-landscaping.py --data_dir ${DATA_DIR} --dump ${DUMP_DIR} --mutant_file ${MUTANT_2STEP_FILE} --output_id step-2
 
 cd ${REPO_DIR}/scripts
-python aggregate-knockouts.py --data_dir ${DATA_DIR} --dump ${DUMP_DIR}
+python aggregate-knockouts.py --data_dir ${DATA_DIR} --dump ${DUMP_DIR} --ko_file ${KO_FILE}
