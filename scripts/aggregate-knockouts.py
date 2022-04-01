@@ -28,6 +28,7 @@ def main():
     parser = argparse.ArgumentParser(description="Run submission script.")
     parser.add_argument("--data_dir", type=str, help="Where is the base output directory for each run?")
     parser.add_argument("--dump", type=str, help="Where to dump this?", default=".")
+    parser.add_argument("--ko_file", type=str, default="knockouts.csv", help="Name of file where knockout information for run is stored.")
     parser.add_argument("--no_arch", action="store_true", help="Don't aggregate architectures.")
 
     # Parse command line arguments
@@ -35,6 +36,7 @@ def main():
     data_dir = args.data_dir
     dump_dir = args.dump
     agg_arch = not args.no_arch
+    ko_fname = args.ko_file
 
     # Verify that the given data directory exits
     if not os.path.exists(data_dir):
@@ -98,7 +100,7 @@ def main():
 
         ############################################################
         # Read knockouts.csv
-        knockouts_data = utils.read_csv(os.path.join(run_path, "data", "knockouts.csv"))
+        knockouts_data = utils.read_csv(os.path.join(run_path, "data", ko_fname))
 
         # Collect genotype ids (i.e., how many knockout analyses are represented in this file?)
         genotype_ids = list({line["genotype_id"] for line in knockouts_data})
