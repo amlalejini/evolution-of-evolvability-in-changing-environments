@@ -30,6 +30,8 @@ def main():
     parser.add_argument("--dump", type=str, help="Where to dump this?", default=".")
     parser.add_argument("--ko_file", type=str, default="knockouts.csv", help="Name of file where knockout information for run is stored.")
     parser.add_argument("--no_arch", action="store_true", help="Don't aggregate architectures.")
+    parser.add_argument("--extant_only", action="store_true", help="Only analyze extant genotype.")
+    parser.add_argument("--output_id", type=str, default="", help="String to append to output file names.")
 
     # Parse command line arguments
     args = parser.parse_args()
@@ -37,6 +39,8 @@ def main():
     dump_dir = args.dump
     agg_arch = not args.no_arch
     ko_fname = args.ko_file
+    extant_only = args.extant_only
+    output_id = args.output_id
 
     # Verify that the given data directory exits
     if not os.path.exists(data_dir):
@@ -53,10 +57,12 @@ def main():
     run_summary_header = None
     run_summary_lines = []
 
+    lineage_arch_long_fpath=""
+    lineage_arch_long_header = None
+
     if agg_arch:
-        lineage_arch_long_header = None
-        # lineage_arch_long_lines = []
-        lineage_arch_long_fpath = os.path.join(dump_dir, "lineage_arch_long.csv")
+        lineage_arch_long_fname = "lineage_arch_long.csv" if output_id == "" else f"lineage_arch_long_{output_id}.csv"
+        lineage_arch_long_fpath = os.path.join(dump_dir, lineage_arch_long_fname)
         with open(lineage_arch_long_fpath, "w") as fp:
             fp.write("")
 
@@ -104,11 +110,38 @@ def main():
 
         # Collect genotype ids (i.e., how many knockout analyses are represented in this file?)
         genotype_ids = list({line["genotype_id"] for line in knockouts_data})
+
         # Collect the original genotypes (organized by genotype id)
         orig_genotypes = {line["genotype_id"]:line for line in knockouts_data if line["ko_pos"] == "-1"}
+
+        # Identify the extant genotype
+        extant_genotype_id = None
+        for gid in orig_genotypes:
+            if extant_genotype_id == None:
+                extant_genotype_id = gid
+                continue
+            cur_extant_update_born = int(orig_genotypes[extant_genotype_id]["update_born"])
+            update_born = int(orig_genotypes[gid]["update_born"])
+            if update_born > cur_extant_update_born:
+                extant_genotype_id = gid
+
+        # If only analyzing the extant genotype, filter all other genotypes from consideration.
+        if extant_only:
+            genotype_ids=[extant_genotype_id]
+            orig_genotypes={extant_genotype_id:orig_genotypes[extant_genotype_id]}
+
         # Collect all the knockouts (organized by genotype id)
-        knockouts_by_genotype_id = {gid:[line for line in knockouts_data if line["genotype_id"] == gid and line["ko_pos"] != "-1"] for gid in genotype_ids}
         genotype_summary_info = {gid:{} for gid in genotype_ids}
+        knockouts_by_genotype_id = {gid:[] for gid in genotype_ids}
+        for line in knockouts_data:
+            # If ko_pos == -1, this is an original genotype.
+            if line["ko_pos"]=="-1": continue
+            gid = line["genotype_id"]
+            # Skip line if we're not analyzing this genotype.
+            if not gid in knockouts_by_genotype_id: continue
+            knockouts_by_genotype_id[gid].append(line)
+        # knockouts_by_genotype_id = {gid:[line for line in knockouts_data if line["genotype_id"] == gid and line["ko_pos"] != "-1"] for gid in genotype_ids}
+
         # For each genotype, process knockout analysis
         for genotype_id in genotype_ids:
             knockouts = knockouts_by_genotype_id[genotype_id]
@@ -153,19 +186,6 @@ def main():
             genotype_summary_info[genotype_id]["task_env_a_sites"] = task_env_a_sites
             genotype_summary_info[genotype_id]["task_env_b_sites"] = task_env_b_sites
             genotype_summary_info[genotype_id]["position_info"] = position_info
-
-        # print(genotype_summary_info)
-
-        # Identify extant genotype
-        extant_genotype_id = None
-        for gid in orig_genotypes:
-            if extant_genotype_id == None:
-                extant_genotype_id = gid
-                continue
-            cur_extant_update_born = int(orig_genotypes[extant_genotype_id]["update_born"])
-            update_born = int(orig_genotypes[gid]["update_born"])
-            if update_born > cur_extant_update_born:
-                extant_genotype_id = gid
 
         # Summarize run information
         # - Extant summary info
@@ -242,7 +262,7 @@ def main():
 
     ############################################################
     # Write out run summary data
-    fname = "knockouts_run_summary.csv"
+    fname = "knockouts_run_summary.csv" if output_id == "" else f"knockouts_run_summary_{output_id}.csv"
     with open(os.path.join(dump_dir, fname), "w") as fp:
         out_content = ",".join(run_summary_header) + "\n" + "\n".join(run_summary_lines)
         fp.write(out_content)
