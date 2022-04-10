@@ -154,6 +154,7 @@ def main():
             multi_task_sites = 0    # Calculate number of multi-task sites (overlap)
             task_env_a_sites = 0    # Calculate number of sites important for env-a tasks
             task_env_b_sites = 0    # Calculate number of sites important for env-b tasks
+            per_task_sites = {task:0 for task in tasks_primary}
             for ko in knockouts:
                 pos = int(ko["ko_pos"]) # What position are we getting information about w/this knockout?
                 info = {}               # Will store info about this position.
@@ -176,6 +177,9 @@ def main():
                 multi_task_sites += int(len(info["tasks"]) > 1)
                 task_env_a_sites += int(info["encodes_env_a_task"])
                 task_env_b_sites += int(info["encodes_env_b_task"])
+                for task in info["tasks"]:
+                    per_task_sites[task] += 1
+
                 # Set info about site
                 position_info[pos] = info
 
@@ -186,6 +190,11 @@ def main():
             genotype_summary_info[genotype_id]["task_env_a_sites"] = task_env_a_sites
             genotype_summary_info[genotype_id]["task_env_b_sites"] = task_env_b_sites
             genotype_summary_info[genotype_id]["position_info"] = position_info
+            genotype_summary_info[genotype_id]["orig_tasks_performed"] = orig_tasks_performed
+
+            # Save per-task sites
+            for task in tasks_primary:
+                genotype_summary_info[genotype_id][f"{task}_sites"] = per_task_sites[task]
 
         # Summarize run information
         # - Extant summary info
@@ -195,6 +204,9 @@ def main():
         run_summary_info["extant_num_task_env_a_sites"] = genotype_summary_info[extant_genotype_id]["task_env_a_sites"]
         run_summary_info["extant_num_task_env_b_sites"] = genotype_summary_info[extant_genotype_id]["task_env_b_sites"]
         run_summary_info["extant_num_tasks_performed"] = len(orig_genotypes[extant_genotype_id]["tasks_performed"])
+        run_summary_info["extant_tasks_performed"] = ";".join(sorted(list(genotype_summary_info[extant_genotype_id]["orig_tasks_performed"])))
+        for task in tasks_primary:
+            run_summary_info[f"extant_num_{task}_sites"] = genotype_summary_info[extant_genotype_id][f"{task}_sites"]
         ############################################################
 
         ############################################################
