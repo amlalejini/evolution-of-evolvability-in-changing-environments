@@ -77,6 +77,15 @@ get_env_type_label <- function(env_type) {
     return("random")
   }
 }
+get_combined_env_type_label <- function(env_type) {
+  if (env_type=="consta" || env_type=="constb") {
+    return("cycling+const")
+  } else if (env_type=="cycling") {
+    return("cycling+const")
+  } else if (env_type=="random") {
+    return("random")
+  }
+}
 summary_data$env_chg_rate_label <- mapply(
   get_env_chg_rate_label,
   summary_data$env_chg_rate,
@@ -94,6 +103,10 @@ summary_data$env_chg_rate_label <- factor(
 )
 summary_data$env_type_label <- mapply(
   get_env_type_label,
+  summary_data$env_type
+)
+summary_data$combined_env_type_label <- mapply(
+  get_combined_env_type_label,
   summary_data$env_type
 )
 ```
@@ -201,12 +214,63 @@ ggsave(
 )
 ```
 
-## True replication rate over time
+## True replication rate
+
+### Time series
+
+```{r}
+ggplot(
+    # time_series_data,
+    filter(time_series_data, update < 5000),
+    aes(
+      x=update,
+      y=avg_true_replication_rate,
+      fill=env_condition,
+      color=env_condition
+    )
+  ) +
+  stat_summary(geom="line", fun=mean) +
+  stat_summary(
+    geom="ribbon",
+    fun.data="mean_cl_boot",
+    fun.args=list(conf.int=0.95),
+    alpha=0.2,
+    linetype=0
+  ) +
+  # stat_summary(
+  #   geom="ribbon",
+  #   fun.min=min,
+  #   fun.max=max,
+  #   alpha=0.2,
+  #   linetype=0
+  # ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  scale_y_continuous(
+    trans=log10_trans()
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label
+  ) +
+  theme(
+    legend.position="bottom"
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "avg_true_replication_rate_ot-early.pdf"),
+  width=15,
+  height=10
+)
+```
 
 ```{r}
 ggplot(
     time_series_data,
-    # filter(time_series_data, update>290000),
+    # filter(time_series_data, (update%%1000)==0),
     aes(
       x=update,
       y=avg_true_replication_rate,
@@ -249,6 +313,57 @@ ggsave(
   paste0(working_directory, "plots/", "avg_true_replication_rate_ot.pdf"),
   width=15,
   height=10
+)
+```
+
+### Final
+
+```{r}
+ggplot(
+    summary_data,
+    aes(
+      x=env_chg_rate_label,
+      y=avg_true_replication_rate,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  scale_y_continuous(
+    trans=log10_trans()
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    # axis.text.x = element_text(angle = 90),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "avg_true_replication_rate.pdf")
 )
 ```
 
@@ -809,6 +924,434 @@ ggplot(
   )
 ggsave(
   paste0(working_directory, "plots/", "phylo_sum_pairwise_distance.png")
+)
+```
+
+## Knockout analyses
+
+```{r}
+ko_data_loc <- paste0(working_directory, "data/knockouts_run_summary_extant-only.csv")
+ko_data <- read.csv(ko_data_loc, na.strings="NONE")
+
+ko_data$COPY_MUT_PROB <- as.factor(
+  ko_data$COPY_MUT_PROB
+)
+ko_data$env_chg_rate <- as.factor(
+  ko_data$env_chg_rate
+)
+ko_data$env_condition <- as.factor(
+  ko_data$env_condition
+)
+ko_data$env_type <- as.factor(
+  ko_data$env_type
+)
+
+ko_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  ko_data$env_chg_rate,
+  ko_data$env_type
+)
+ko_data$env_chg_rate_label <- factor(
+  ko_data$env_chg_rate_label,
+  levels=c(
+    "none-a",
+    "none-b",
+    "30",
+    "300",
+    "3000"
+  )
+)
+ko_data$env_type_label <- mapply(
+  get_env_type_label,
+  ko_data$env_type
+)
+ko_data$combined_env_type_label <- mapply(
+  get_combined_env_type_label,
+  ko_data$env_type
+)
+
+# Sites per task
+ko_data$extant_sites_per_task <- ko_data$extant_num_task_sites / ko_data$extant_num_tasks_performed
+ko_data$extant_prop_multi_task_sites <- ko_data$extant_num_multi_task_sites / ko_data$extant_num_task_sites
+```
+
+### extant_num_tasks_performed
+
+```{r}
+ggplot(
+    ko_data,
+    aes(
+      x=env_chg_rate_label,
+      y=extant_num_tasks_performed,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  # scale_y_continuous(
+  #   trans=log10_trans()
+  # ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "extant_num_tasks_performed.pdf")
+)
+```
+
+### extant_num_task_sites
+
+```{r}
+ggplot(
+    filter(ko_data, extant_num_tasks_performed==3),
+    aes(
+      x=env_chg_rate_label,
+      y=extant_num_task_sites,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  # scale_y_continuous(
+  #   trans=log10_trans()
+  # ) +
+  facet_grid(
+    combined_env_type_label~COPY_MUT_PROB,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "extant_num_task_sites.pdf")
+)
+```
+
+### extant_sites_per_task
+
+```{r}
+ggplot(
+    filter(ko_data,extant_tasks_performed=="and;not;or"),
+    aes(
+      x=env_chg_rate_label,
+      y=extant_sites_per_task,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  # scale_fill_brewer(
+  #   palette=cb_palette
+  # ) +
+  # scale_color_brewer(
+  #   palette=cb_palette
+  # ) +
+  # scale_y_continuous(
+
+  # ) +
+  facet_grid(
+    combined_env_type_label~COPY_MUT_PROB,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "extant_sites_per_task.pdf")
+)
+```
+
+### Num sites for each task
+
+```{r}
+ko_longer <- pivot_longer(
+  ko_data,
+  cols=c(
+    "extant_num_and_sites",
+    "extant_num_andnot_sites",
+    "extant_num_nand_sites",
+    "extant_num_not_sites",
+    "extant_num_or_sites",
+    "extant_num_ornot_sites"
+  ),
+  names_to="task_name",
+  values_to="num_sites"
+)
+```
+
+```{r}
+ggplot(
+    filter(ko_longer, num_sites>0),
+    aes(
+      x=COPY_MUT_PROB,
+      y=num_sites,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  # scale_y_continuous(
+  #   trans=log10_trans()
+  # ) +
+  facet_grid(
+    task_name~env_condition,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "extant_num_task_sites_by_task.pdf"),
+  height=20,
+  width=18
+)
+```
+
+### extant_num_multi_task_sites
+
+```{r}
+ggplot(
+    ko_data,
+    aes(
+      x=env_chg_rate_label,
+      y=extant_num_multi_task_sites,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  # scale_y_continuous(
+  #   trans=log10_trans()
+  # ) +
+  facet_grid(
+    combined_env_type_label~COPY_MUT_PROB,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "extant_num_multi_task_sites.pdf")
+)
+```
+
+### extant_prop_multi_task_sites
+
+```{r}
+ggplot(
+    ko_data,
+    aes(
+      x=env_chg_rate_label,
+      y=extant_prop_multi_task_sites,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  # scale_y_continuous(
+  #   trans=log10_trans()
+  # ) +
+  facet_grid(
+    combined_env_type_label~COPY_MUT_PROB,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "extant_prop_multi_task_sites.pdf")
+)
+```
+
+### extant_num_task_env_a_sites
+
+
+### extant_num_task_env_b_sites
+
+
+### extant_num_viability_sites
+
+```{r}
+ggplot(
+    ko_data,
+    aes(
+      x=env_chg_rate_label,
+      y=extant_num_viability_sites,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  # scale_y_continuous(
+  #   trans=log10_trans()
+  # ) +
+  facet_grid(
+    combined_env_type_label~COPY_MUT_PROB,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "extant_num_viability_sites.pdf")
 )
 ```
 
