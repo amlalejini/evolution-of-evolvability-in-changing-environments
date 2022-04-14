@@ -52,6 +52,14 @@ mutant_phen_distribution_identifiers = [
     "RANDOM_SEED"
 ]
 
+mutant_task_toggle_cnt_distribution_identifiers = [
+    "env_condition",
+    "env_type",
+    "env_chg_rate",
+    "COPY_MUT_PROB",
+    "RANDOM_SEED"
+]
+
 run_command_excludes = {}
 
 def main():
@@ -93,6 +101,12 @@ def main():
     phen_distance_distribution_header = None
     phen_distance_distribution_lines = []
 
+    mutant_task_toggle_cnt_distribution_header = None
+    mutant_task_toggle_cnt_distribution_fname = f"mutant_task_toggle_distribution_{output_id}.csv" if output_id != "" else f"mutant_task_toggle_distribution.csv"
+    mutant_task_toggle_cnt_distribution_fpath = os.path.join(dump_dir, mutant_task_toggle_cnt_distribution_fname)
+    with open(mutant_task_toggle_cnt_distribution_fpath, "w") as fp:
+        fp.write("")
+
     mutant_phen_distribution_header = None
     mutant_phen_distribution_fname = f"mutant_phen_distribution_{output_id}.csv" if output_id != "" else f"mutant_phen_distribution.csv"
     mutant_phen_distribution_fpath = os.path.join(dump_dir, mutant_phen_distribution_fname)
@@ -110,6 +124,7 @@ def main():
         task_cooccurrence_info = []             # List of dictionaries
         phen_distance_distribution_info = []    # List of dictionaries
         mutant_phen_distribution_info = []      # List of dictionaries
+        mutant_task_toggle_distribution_info = [] # List of dictionaries
 
         cur_run_i += 1
         print(f"Processing ({cur_run_i}/{total_runs}): {run_path}")
@@ -183,6 +198,7 @@ def main():
         num_viable_mutants_gain_multiple_tasks = 0
         num_viable_mutants_improve_env_a = 0
         num_viable_mutants_improve_env_b = 0
+        num_viable_mutants_flip_env = 0 # Number of viable mutants that flip phenotype to match opposite environment
         viable_phenotypes = []
         distances_to_env_a = {i:0 for i in range(0, len(profile_env_a)+1)}
         distances_to_env_b = {i:0 for i in range(0, len(profile_env_b)+1)}
@@ -225,6 +241,14 @@ def main():
             distances_to_env_a[dist_to_env_a] += 1
             distances_to_env_b[dist_to_env_b] += 1
 
+            flips_env = None
+            if env_type == "constb":
+                # env-b is focal. env-a is opposite.
+                flips_env = (match_score_env_a == len(tasks_primary))
+            else:
+                # Env-A is focal. Env-B is opposite.
+                flips_env = (match_score_env_b == len(tasks_primary))
+
             # Update phenotype in distribution
             if not phenotype in mutant_phenotype_info:
                 mutant_phenotype_info[phenotype] = {}
@@ -241,6 +265,7 @@ def main():
             num_viable_mutants_gain_multiple_tasks += int(len(tasks_gained) > 1)
             num_viable_mutants_improve_env_a += int(improves_env_a)
             num_viable_mutants_improve_env_b += int(improves_env_b)
+            num_viable_mutants_flip_env += int(flips_env)
 
             mutant["phenotype"] = phenotype
             mutant["tasks_performed"] = tasks_performed
@@ -253,6 +278,7 @@ def main():
             mutant["improves_env_b"] = int(improves_env_b)
             mutant["match_chg_toward_a"] = match_chg_toward_a
             mutant["match_chg_toward_b"] = match_chg_toward_b
+            mutant["flips_env"] = int(flips_env)
 
             viable_phenotypes.append(phenotype)
 
@@ -347,6 +373,7 @@ def main():
         run_summary_info["num_viable_mutants_gain_multiple_tasks"] = num_viable_mutants_gain_multiple_tasks
         run_summary_info["num_viable_mutants_improve_env_a"] = num_viable_mutants_improve_env_a
         run_summary_info["num_viable_mutants_improve_env_b"] = num_viable_mutants_improve_env_b
+        run_summary_info["num_viable_mutants_flip_env"] = num_viable_mutants_flip_env
         run_summary_info["avg_dist_to_ancestor"] = avg_dist_to_ancestor
         run_summary_info["avg_match_score_env_a"] = avg_match_score_env_a
         run_summary_info["avg_match_score_env_b"] = avg_match_score_env_b
@@ -402,6 +429,8 @@ def main():
             info["replicate_id"] = cur_run_i
             info["count_env_a"] = distances_to_env_a[dist]
             info["count_env_b"] = distances_to_env_b[dist]
+            info["prop_of_viable_env_a"] = (distances_to_env_a[dist] / num_viable) if num_viable > 0 else 0
+            info["prop_of_viable_env_b"] = (distances_to_env_b[dist] / num_viable) if num_viable > 0 else 0
             phen_distance_distribution_info.append(info)
         # add non-viable info to phenotypic distance distribution
         info = {field:run_summary_info[field] for field in phen_distance_distribution_identifiers}
@@ -409,14 +438,24 @@ def main():
         info["replicate_id"] = cur_run_i
         info["count_env_a"] = num_nonviable
         info["count_env_b"] = num_nonviable
+        info["prop_of_viable_env_a"] = 0
+        info["prop_of_viable_env_b"] = 0
         phen_distance_distribution_info.append(info)
 
         # Fill out mutant phenotype distribution
+        toggle_dist = {toggle_cnt:0 for toggle_cnt in range(0, len(profile_all)+1)}
+        for phen in mutant_phenotype_info:
+            prop_of_viable = (mutant_phenotype_info[phen]["count"] / num_viable) if num_viable > 0 else (0)
+            mutant_phenotype_info[phen]["prop_of_viable"] = prop_of_viable
+            task_toggle_count = mutant_phenotype_info[phen]["dist_to_ancestor"]
+            toggle_dist[task_toggle_count] += mutant_phenotype_info[phen]["count"]
+
         mutant_phenotype_info["nonviable"] = {
             "match_score_a": "-1",
             "match_score_b": "-1",
             "is_ancestor": "0",
             "count": num_nonviable,
+            "prop_of_viable": "0",
             "dist_to_ancestor": "-1"
         }
         for phen in mutant_phenotype_info:
@@ -425,6 +464,21 @@ def main():
                 line_info[field] = mutant_phenotype_info[phen][field]
             line_info["phenotype"] = phen
             mutant_phen_distribution_info.append(line_info)
+
+        # Fill out mutant task toggle distribution information
+        for toggle_cnt in range(0, len(profile_all)+1):
+            info = {field:run_summary_info[field] for field in mutant_task_toggle_cnt_distribution_identifiers}
+            info["num_tasks_toggled"] = toggle_cnt
+            num_mutants = toggle_dist[toggle_cnt]
+            info["num_mutants"] = num_mutants
+            info["prop_of_viable"] = num_mutants / num_viable if num_viable > 0 else 0
+            mutant_task_toggle_distribution_info.append(info)
+        # Append a non-viable count
+        info = {field:run_summary_info[field] for field in mutant_task_toggle_cnt_distribution_identifiers}
+        info["num_tasks_toggled"] = -1
+        info["num_mutants"] = num_nonviable
+        info["prop_of_viable"] = 0
+        mutant_task_toggle_distribution_info.append(info)
         ############################################################
 
         ############################################################
@@ -472,6 +526,28 @@ def main():
             fp.write("\n")
             fp.write(mutant_phen_distribution_lines)
         mutant_phen_distribution_info = []
+        ############################################################
+
+        ############################################################
+        # Add lines to the mutant task toggle count distribution file
+        write_header = False
+        mutant_task_toggle_cnt_distribution_fields = sorted(list(mutant_task_toggle_distribution_info[0]))
+        if mutant_task_toggle_cnt_distribution_header == None:
+            write_header = True
+            mutant_task_toggle_cnt_distribution_header = mutant_task_toggle_cnt_distribution_fields
+        elif mutant_task_toggle_cnt_distribution_header != mutant_task_toggle_cnt_distribution_fields:
+            print("mutant_task_toggle_cnt_distribution_header mismatch!")
+            exit(-1)
+        mutant_task_toggle_distribution_lines = "\n".join([
+            ",".join([str(info[field]) for field in mutant_task_toggle_cnt_distribution_fields])
+            for info in mutant_task_toggle_distribution_info
+        ])
+        with open(mutant_task_toggle_cnt_distribution_fpath, "a") as fp:
+            if write_header:
+                fp.write(",".join(mutant_task_toggle_cnt_distribution_header))
+            fp.write("\n")
+            fp.write(mutant_task_toggle_distribution_lines)
+        mutant_task_toggle_distribution_info = []
         ############################################################
 
         ############################################################
