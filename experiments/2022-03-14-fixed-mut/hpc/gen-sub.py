@@ -284,10 +284,11 @@ def main():
         array_id_run_info = {
             array_id: {
                 "avida": False,
-                "avida_analyze_mode": True,
+                "avida_analyze_mode": False,
                 "landscape_step-1": False,
                 "landscape_step-2": False,
-                "knockouts": True
+                "knockouts": False,
+                "pairwise-knockouts": True
             }
             for array_id in range(1, num_replicates+1)
         }
@@ -301,6 +302,7 @@ def main():
                 array_id_run_info[array_id]["landscape_step-1"] = not os.path.exists(os.path.join(run_path, "data", "mutants_step-1.dat"))
                 array_id_run_info[array_id]["landscape_step-2"] = not os.path.exists(os.path.join(run_path, "data", "mutants_step-2.dat"))
                 array_id_run_info[array_id]["knockouts"] = not os.path.exists(os.path.join(run_path, "data", "knockouts.csv"))
+                array_id_run_info[array_id]["pairwise-knockouts"] = not os.path.exists(os.path.join(run_path, "data", "pairwise-knockouts.csv"))
 
         # Track which array ids need to be included. If none, don't need to output this file.
         active_array_ids = []
@@ -347,8 +349,10 @@ def main():
             if array_id_run_info[array_id]["knockouts"]:
                 knockout_commands += 'python scripts/gen-knockouts.py --inst_set ${CONFIG_DIR}/instset-heads-ko.cfg --input ${RUN_DIR}/data/analysis/lineage.dat --num_tasks 6 --avida_args "${RUN_PARAMS}" --run_dir ${RUN_DIR} --output knockouts.csv --cleanup'
                 knockout_commands += "\n"
+            if array_id_run_info[array_id]["pairwise-knockouts"]:
+                knockout_commands += 'python scripts/gen-pairwise-knockouts.py --inst_set ${CONFIG_DIR}/instset-heads-ko.cfg --input ${RUN_DIR}/data/analysis/final_dominant.dat --num_tasks 6 --avida_args "${RUN_PARAMS}" --run_dir ${RUN_DIR} --output pairwise-knockouts.csv --cleanup'
+                knockout_commands += "\n"
             knockout_commands += "cd ${RUN_DIR}\n"
-
 
             run_logic += run_commands
             run_logic += analysis_commands
