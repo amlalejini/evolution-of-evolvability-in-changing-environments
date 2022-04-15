@@ -72,9 +72,9 @@ def main():
     for run_dir in run_dirs:
         run_path = os.path.join(data_dir, run_dir)
         # Skip over (but make note of) incomplete runs.
-        if not os.path.exists(os.path.join(run_path, 'data', 'knockouts.csv')):
+        if not os.path.exists(os.path.join(run_path, 'data', ko_fname)):
             print("Skipping: ", run_path)
-            print(" - Failed to find 'knockouts.csv'")
+            print(f" - Failed to find '{ko_fname}'")
             continue
 
         run_summary_info = {}
