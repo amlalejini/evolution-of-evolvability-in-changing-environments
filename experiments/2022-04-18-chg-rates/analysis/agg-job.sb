@@ -1,0 +1,50 @@
+#!/bin/bash
+###############################################################
+#SBATCH --job-name=agg
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=8G
+#SBATCH --time=32:00:00
+#SBATCH --account=devolab
+###############################################################
+
+EXP_SLUG=2022-04-18-chg-rates
+PROJECT_NAME=evolution-of-evolvability-in-changing-environments
+UPDATE=300000
+TS_RANGE_0=0
+TS_RANGE_1=${UPDATE}
+
+MUTANT_1STEP_FILE=mutants_step-1.dat
+MUTANT_2STEP_FILE=mutants_step-2.dat
+KO_FILE=knockouts.csv
+PW_KO_FILE=pairwise-knockouts.csv
+
+REPO_DIR=/mnt/home/lalejini/devo_ws/${PROJECT_NAME}
+ANALYSIS_DIR=${REPO_DIR}/experiments/${EXP_SLUG}/analysis
+DATA_DIR=/mnt/scratch/lalejini/data/evo-evolvability/${EXP_SLUG}
+DUMP_DIR=${ANALYSIS_DIR}/dump
+
+# Configure local environment
+cd ${REPO_DIR}
+source load-hpc-env
+
+# Run data aggregation script(s).
+
+# Aggregate data
+cd ${ANALYSIS_DIR}
+python aggregate.py --data_dir ${DATA_DIR} --dump ${DUMP_DIR} --update ${UPDATE} --time_series_range ${TS_RANGE_0} ${TS_RANGE_1}
+
+# Aggregate landscape data on 1-step mutants
+# cd ${ANALYSIS_DIR}
+# python aggregate-landscaping.py --data_dir ${DATA_DIR} --dump ${DUMP_DIR} --mutant_file ${MUTANT_1STEP_FILE} --output_id step-1
+
+# Aggregate landscape data on 2-step mutants
+# cd ${ANALYSIS_DIR}
+# python aggregate-landscaping.py --data_dir ${DATA_DIR} --dump ${DUMP_DIR} --mutant_file ${MUTANT_2STEP_FILE} --output_id step-2
+
+# cd ${REPO_DIR}/scripts
+# python aggregate-knockouts.py --data_dir ${DATA_DIR} --dump ${DUMP_DIR} --ko_file ${KO_FILE}
+
+cd ${REPO_DIR}/scripts
+python aggregate-pairwise-knockouts.py --data_dir ${DATA_DIR} --dump ${DUMP_DIR} --ko_file ${PW_KO_FILE}
