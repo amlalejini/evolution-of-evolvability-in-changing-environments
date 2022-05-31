@@ -17,6 +17,7 @@ library(ggplot2)
 library(scales)
 library(cowplot)
 library(RColorBrewer)
+library(viridis)
 source("https://gist.githubusercontent.com/benmarwick/2a1bb0133ff568cbe28d/raw/fb53bd97121f7f9ce947837ef1a4c65a73bffb3f/geom_flat_violin.R")
 ```
 
@@ -141,18 +142,6 @@ get_env_type_label <- function(env_type) {
   }
 }
 
-# Simplify replicate IDs (start at 0 for each treatment)
-ls_simplify_replicate_id <- function(ref_data, e, m, rep_id) {
-  treatment_data <- filter(
-    ref_data,
-    (env_condition==e) & (COPY_MUT_PROB==m)
-  )
-  rep_ids <- as.integer(levels(factor(treatment_data$replicate_id)))
-  rep_id_map <- as.data.frame(rep_ids)
-  rep_id_map$order <- order(rep_id_map$rep_ids)
-  return(filter(rep_id_map, rep_ids==rep_id)$order)
-}
-
 get_final_mut_rate <- function(seed) {
   filtered_data <- filter(summary_data, RANDOM_SEED==seed)
   return(filtered_data$final_average_copy_mutation_rate)
@@ -239,16 +228,163 @@ time_series_data$env_type_label <- mapply(
 )
 
 # ---- ls2_run_summary_data ----
-
+ls2_run_summary_data$COPY_MUT_PROB <- as.factor(
+  ls2_run_summary_data$COPY_MUT_PROB
+)
+ls2_run_summary_data$env_chg_rate <- as.factor(
+  ls2_run_summary_data$env_chg_rate
+)
+ls2_run_summary_data$env_condition <- as.factor(
+  ls2_run_summary_data$env_condition
+)
+ls2_run_summary_data$env_type <- as.factor(
+  ls2_run_summary_data$env_type
+)
+ls2_run_summary_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  ls2_run_summary_data$env_chg_rate,
+  ls2_run_summary_data$env_type
+)
+ls2_run_summary_data$env_chg_rate_label <- factor(
+  ls2_run_summary_data$env_chg_rate_label,
+  levels = env_chg_rate_label_factor_levels
+)
+ls2_run_summary_data$env_type_label <- mapply(
+  get_env_type_label,
+  ls2_run_summary_data$env_type
+)
 
 # ---- ls2_cooccur_data ----
-
+ls2_cooccur_data$COPY_MUT_PROB <- as.factor(
+  ls2_cooccur_data$COPY_MUT_PROB
+)
+ls2_cooccur_data$env_chg_rate <- as.factor(
+  ls2_cooccur_data$env_chg_rate
+)
+ls2_cooccur_data$env_condition <- as.factor(
+  ls2_cooccur_data$env_condition
+)
+ls2_cooccur_data$env_type <- as.factor(
+  ls2_cooccur_data$env_type
+)
+ls2_cooccur_data$task_1_id <- as.factor(
+  ls2_cooccur_data$task_1_id
+)
+ls2_cooccur_data$task_2_id <- as.factor(
+  ls2_cooccur_data$task_2_id
+)
+ls2_cooccur_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  ls2_cooccur_data$env_chg_rate,
+  ls2_cooccur_data$env_type
+)
+ls2_cooccur_data$env_chg_rate_label <- factor(
+  ls2_cooccur_data$env_chg_rate_label,
+  levels=env_chg_rate_label_factor_levels
+)
+ls2_cooccur_data$env_type_label <- mapply(
+  get_env_type_label,
+  ls2_cooccur_data$env_type
+)
 
 # ---- ls2_pairwise_cooccur_data ----
-
+ls2_pairwise_cooccur_data$COPY_MUT_PROB <- as.factor(
+  ls2_pairwise_cooccur_data$COPY_MUT_PROB
+)
+ls2_pairwise_cooccur_data$env_chg_rate <- as.factor(
+  ls2_pairwise_cooccur_data$env_chg_rate
+)
+ls2_pairwise_cooccur_data$env_condition <- as.factor(
+  ls2_pairwise_cooccur_data$env_condition
+)
+ls2_pairwise_cooccur_data$env_type <- as.factor(
+  ls2_pairwise_cooccur_data$env_type
+)
+ls2_pairwise_cooccur_data$task_1_id <- as.factor(
+  ls2_pairwise_cooccur_data$task_1_id
+)
+ls2_pairwise_cooccur_data$task_2_id <- as.factor(
+  ls2_pairwise_cooccur_data$task_2_id
+)
+ls2_pairwise_cooccur_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  ls2_pairwise_cooccur_data$env_chg_rate,
+  ls2_pairwise_cooccur_data$env_type
+)
+ls2_pairwise_cooccur_data$env_chg_rate_label <- factor(
+  ls2_pairwise_cooccur_data$env_chg_rate_label,
+  levels=env_chg_rate_label_factor_levels
+)
+ls2_pairwise_cooccur_data$env_type_label <- mapply(
+  get_env_type_label,
+  ls2_pairwise_cooccur_data$env_type
+)
 
 # ---- ls2_phen_dists_data ----
-
+ls2_phen_dists_data$COPY_MUT_PROB <- as.factor(
+  ls2_phen_dists_data$COPY_MUT_PROB
+)
+ls2_phen_dists_data$env_chg_rate <- as.factor(
+  ls2_phen_dists_data$env_chg_rate
+)
+ls2_phen_dists_data$env_condition <- as.factor(
+  ls2_phen_dists_data$env_condition
+)
+ls2_phen_dists_data$env_type <- as.factor(
+  ls2_phen_dists_data$env_type
+)
+ls2_phen_dists_data$distance <- factor(
+  ls2_phen_dists_data$distance,
+  levels=c(
+    -1,
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  )
+)
+# Simplify replicate IDs (start at 0 for each treatment)
+ls_simplify_replicate_id <- function(e, m, rep_id) {
+  treatment_data <- filter(
+    ls2_phen_dists_data,
+    (env_condition==e) & (COPY_MUT_PROB==m)
+  )
+  rep_ids <- as.integer(levels(factor(treatment_data$replicate_id)))
+  rep_id_map <- as.data.frame(rep_ids)
+  rep_id_map$order <- order(rep_id_map$rep_ids)
+  return(filter(rep_id_map, rep_ids==rep_id)$order)
+}
+ls2_phen_dists_data$rep_id <- mapply(
+  ls_simplify_replicate_id,
+  ls2_phen_dists_data$env_condition,
+  ls2_phen_dists_data$COPY_MUT_PROB,
+  ls2_phen_dists_data$replicate_id
+)
+ls2_phen_dists_data$rep_id <- as.factor(
+  ls2_phen_dists_data$rep_id
+)
+ls2_phen_dists_data$replicate_id <- as.factor(
+  ls2_phen_dists_data$replicate_id
+)
+ls2_phen_dists_data$RANDOM_SEED <- as.factor(
+  ls2_phen_dists_data$RANDOM_SEED
+)
+ls2_phen_dists_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  ls2_phen_dists_data$env_chg_rate,
+  ls2_phen_dists_data$env_type
+)
+ls2_phen_dists_data$env_chg_rate_label <- factor(
+  ls2_phen_dists_data$env_chg_rate_label,
+  levels=env_chg_rate_label_factor_levels
+)
+ls2_phen_dists_data$env_type_label <- mapply(
+  get_env_type_label,
+  ls2_phen_dists_data$env_type
+)
 
 # ---- ls2_task_toggle_data ----
 
@@ -343,6 +479,26 @@ pw_ko_data <- filter(
 )
 pw_ko_longer <- filter(
   pw_ko_data,
+  COPY_MUT_PROB==focal_mut_rate & env_condition%in%focal_envs
+)
+
+ls2_run_summary_data <- filter(
+  ls2_run_summary_data,
+  COPY_MUT_PROB==focal_mut_rate & env_condition%in%focal_envs
+)
+
+ls2_cooccur_data <- filter(
+  ls2_cooccur_data,
+  COPY_MUT_PROB==focal_mut_rate & env_condition%in%focal_envs
+)
+
+ls2_pairwise_cooccur_data <- filter(
+  ls2_pairwise_cooccur_data,
+  COPY_MUT_PROB==focal_mut_rate & env_condition%in%focal_envs
+)
+
+ls2_phen_dists_data <- filter(
+  ls2_phen_dists_data,
   COPY_MUT_PROB==focal_mut_rate & env_condition%in%focal_envs
 )
 ```
@@ -1005,10 +1161,760 @@ kruskal.test(
 
 ## Mutational landscape analyses
 
+### Viable mutants
 
+```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_type,
+      y=prop_viable,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14)
+  )
+ggsave(
+  paste0(plot_directory, "prop_viable_mutants_step-2.pdf")
+)
+```
 
+```{r}
+kruskal.test(
+  formula=prop_viable~env_type,
+  data=ls2_run_summary_data
+)
+```
+
+### Unique phenotypes in landscape
+
+```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_type,
+      y=num_unique_viable_phenotypes,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14)
+  )
+ggsave(
+  paste0(plot_directory, "num_unique_viable_phenotypes_step-2.pdf")
+)
+```
+
+```{r}
+kruskal.test(
+  formula=num_unique_viable_phenotypes~env_type,
+  data=ls2_run_summary_data
+)
+
+pairwise.wilcox.test(
+  x = ls2_run_summary_data$num_unique_viable_phenotypes,
+  g = ls2_run_summary_data$env_type,
+  p.adjust.method = "bonferroni",
+  exact=FALSE
+)
+```
+
+### Entropy of phenotypes in landscape
+
+```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_type,
+      y=entropy_viable_phenotypes,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14)
+  )
+
+ggsave(
+  paste0(plot_directory, "entropy_viable_phenotypes_step-2.pdf")
+)
+```
+
+```{r}
+kruskal.test(
+  formula=entropy_viable_phenotypes~env_type,
+  data=ls2_run_summary_data
+)
+
+pairwise.wilcox.test(
+  x = ls2_run_summary_data$entropy_viable_phenotypes,
+  g = ls2_run_summary_data$env_type,
+  p.adjust.method = "bonferroni",
+  exact=FALSE
+)
+```
+
+### Average distance from mutant phenotype to ancestral phenotype
+
+```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_type,
+      y=avg_dist_to_ancestor,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14)
+  )
+
+ggsave(
+  paste0(plot_directory, "avg_dist_to_ancestor_step-2.pdf")
+)
+```
+
+### Number of viable mutants that flip to alternate environment
+
+```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_type,
+      y=num_viable_mutants_flip_env,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  scale_y_continuous(
+    trans=pseudo_log_trans(sigma=1,base=10),
+    breaks=c(0, 10, 100, 1000, 10000, 100000, 1000000)
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14)
+  )
+
+ggsave(
+  paste0(plot_directory, "num_viable_mutants_flip_env_step-2.pdf")
+)
+```
+
+### Average match score change toward ENV-B
+
+```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_type,
+      y=avg_match_chg_toward_env_b,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14)
+  )
+
+ggsave(
+  paste0(plot_directory, "avg_match_chg_toward_env_b_step-2.pdf")
+)
+```
+
+### Number of viable mutants that gain tasks
+
+```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_type,
+      y=num_viable_mutants_gain_tasks,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14)
+  )
+
+ggsave(
+  paste0(plot_directory, "num_viable_mutants_gain_tasks_step-2.pdf")
+)
+```
+
+```{r}
+kruskal.test(
+  formula=num_viable_mutants_gain_tasks~env_type,
+  data=ls2_run_summary_data
+)
+
+pairwise.wilcox.test(
+  x = ls2_run_summary_data$num_viable_mutants_gain_tasks,
+  g = ls2_run_summary_data$env_type,
+  p.adjust.method = "bonferroni",
+  exact=FALSE
+)
+```
+
+### Number of viable mutants that gain multiple tasks
+
+```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_type,
+      y=num_viable_mutants_gain_multiple_tasks,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  scale_y_continuous(
+    trans=pseudo_log_trans(sigma=1,base=10),
+    breaks=c(0, 10, 100, 1000, 10000, 100000)
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14)
+  )
+
+ggsave(
+  paste0(plot_directory, "num_viable_mutants_gain_multiple_tasks_step-2.pdf")
+)
+```
+
+### Number of viable mutants that lose tasks
+
+```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_type,
+      y=num_viable_mutants_lose_tasks,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14)
+  )
+
+ggsave(
+  paste0(plot_directory, "num_viable_mutants_lose_tasks_step-2.pdf")
+)
+```
+
+### Number of viable mutants that lose multiple tasks
+
+```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_type,
+      y=num_viable_mutants_lose_multiple_tasks,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14)
+  )
+
+ggsave(
+  paste0(plot_directory, "num_viable_mutants_lose_multiple_tasks_step-2.pdf")
+)
+```
+
+### Total NPMI
+
+```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_type,
+      y=total_npmi,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  geom_hline(
+    yintercept=0,
+    linetype="dashed",
+    size=0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14)
+  )
+
+ggsave(
+  paste0(plot_directory, "total_npmi_step-2.pdf")
+)
+```
+
+### Total NPMI by task pair
+
+```{r}
+ggplot(
+    ls2_pairwise_cooccur_data,
+    aes(
+      x=task_2_id,
+      y=npmi,
+      fill=env_condition
+    )
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  # geom_boxplot(
+  #   width = .1,
+  #   outlier.shape = NA,
+  #   alpha = 0.5
+  # ) +
+  stat_summary(
+    geom="errorbar",
+    fun.data="mean_cl_boot",
+    fun.args=list(conf.int=0.95)
+    # alpha=0.2
+  ) +
+  geom_hline(
+    yintercept=0,
+    linetype="dashed",
+    size=0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  facet_grid(
+    task_1_id~env_type,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x = element_text(angle = 90)
+  )
+
+ggsave(
+  paste0(plot_directory, "total_npmi_pairwise_step-2.pdf")
+)
+```
+
+### Total unexpected NPMI
+
+```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_type,
+      y=unexpected_npmi,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  geom_hline(
+    yintercept=0,
+    linetype="dashed",
+    size=0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14)
+  )
+
+ggsave(
+  paste0(plot_directory, "unexpected_npmi_step-2.pdf")
+)
+```
+
+### Total expected NPMI
+
+```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_type,
+      y=expected_npmi,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  geom_hline(
+    yintercept=0,
+    linetype="dashed",
+    size=0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14)
+  )
+
+ggsave(
+  paste0(plot_directory, "expected_npmi_step-2.pdf")
+)
+```
+
+### NPMI matrices
+
+```{r}
+ggplot(
+    ls2_cooccur_data,
+    aes(
+      x=task_1_id,
+      y=task_2_id,
+      fill=npmi_avg
+    )
+  ) +
+  geom_tile() +
+  scale_fill_distiller(
+    palette = "RdBu",
+    limits=c(-1.0, 1.0),
+    breaks=c(-1, -0.5, 0.0, 0.5, 1.0)
+  ) +
+  facet_grid(
+    env_condition~COPY_MUT_PROB
+  ) +
+  ggtitle("Two-step Mutants") +
+  theme(
+    legend.position="bottom",
+    strip.text.y=element_text(size=10),
+    legend.key.width=unit(3, "cm")
+  )
+ggsave(
+  paste0(plot_directory, "npmi_matrices_step-2.pdf"),
+  height=15,
+  width=12
+)
+```
+
+### Distribution of mutant phenotypes
+
+```{r}
+ggplot(
+    ls2_phen_dists_data,
+    aes(
+      x=rep_id,
+      y=count_env_a,
+      fill=distance
+    )
+  ) +
+  geom_bar(
+    position="stack",
+    stat="identity"
+  ) +
+  scale_fill_manual(
+    name="Distance to ENV-A",
+    values=c("#000000", viridis(n=7, alpha=1, direction=-1))
+  ) +
+  facet_grid(
+    env_condition~COPY_MUT_PROB,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="bottom",
+    axis.text.x=element_text(size=10)
+  )
+
+ggsave(
+  paste0(plot_directory, "mutant_phen_dist_env_a_step-2.pdf"),
+  width=15,
+  height=18
+)
+```
 
 ## Manuscript figures
+
+<!-- todo -->
 
 
 
