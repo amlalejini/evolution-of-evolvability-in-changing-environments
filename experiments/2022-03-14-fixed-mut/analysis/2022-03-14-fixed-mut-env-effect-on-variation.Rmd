@@ -1,0 +1,1014 @@
+# 2022-03-14 - Fixed mutation rates
+
+## Setup
+
+```{r}
+experiment_slug <- "2022-03-14-fixed-mut"
+working_directory <- paste0("experiments/",experiment_slug,"/analysis/")
+```
+
+### Analysis dependencies
+
+Load all required R libraries
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(scales)
+library(cowplot)
+library(RColorBrewer)
+source("https://gist.githubusercontent.com/benmarwick/2a1bb0133ff568cbe28d/raw/fb53bd97121f7f9ce947837ef1a4c65a73bffb3f/geom_flat_violin.R")
+```
+
+These analyses were knit with the following environment:
+
+```{r}
+print(version)
+```
+
+### Load data for analysis
+
+```{r}
+# Run summary data
+summary_data_loc <- paste0(
+  working_directory,
+  "data/aggregate.csv"
+)
+summary_data <- read.csv(
+  summary_data_loc,
+  na.strings="NONE"
+)
+
+# Time series data
+time_series_data_loc <- paste0(
+  working_directory,
+  "data/time_series_u0-u300000.csv"
+)
+time_series_data <- read.csv(
+  time_series_data_loc,
+  na.strings="NONE"
+)
+
+# -- Mutational landscaping data --
+# Landscape summary data (run-level)
+ls2_run_summary_data_loc <- paste0(
+  working_directory,
+  "data/landscape_run_summary_step-2.csv"
+)
+ls2_run_summary_data <- read.csv(
+  ls2_run_summary_data_loc,
+  na.strings="NONE"
+)
+
+# Landscape task pairs cooccurrence data (pair-level, by treatment)
+ls2_cooccur_data_loc <- paste0(
+  working_directory,
+  "data/landscape_task_cooccurrence_treatment_summary_step-2.csv"
+)
+ls2_cooccur_data <- read.csv(
+  ls2_cooccur_data_loc,
+  na.strings="NONE"
+)
+
+# Landscape task pairs cooccurrence data (pair-level, by run)
+ls2_pairwise_cooccur_data_loc <- paste0(
+  working_directory,
+  "data/landscape_task_cooccurrence_step-2.csv"
+)
+ls2_pairwise_cooccur_data <- read.csv(
+  ls2_pairwise_cooccur_data_loc,
+  na.strings="NONE"
+)
+
+# Landscape data, distribution of mutant phenotypes
+ls2_phen_dists_data_loc <- paste0(
+  working_directory,
+  "data/mutant_phenotype_distances_step-2.csv"
+)
+ls2_phen_dists_data <- read.csv(
+  ls2_phen_dists_data_loc,
+  na.strings="NONE"
+)
+
+# Landscape data, distribution tasks toggled
+ls2_task_toggle_data_loc <- paste0(
+  working_directory,
+  "data/mutant_task_toggle_distribution_step-2.csv"
+)
+ls2_task_toggle_data <- read.csv(
+  ls2_task_toggle_data_loc,
+  na.strings="NONE"
+)
+
+# -- Knockout analysis data --
+# Pairwise knockout summary data (by run)
+pw_ko_data_loc <- paste0(
+  working_directory,
+  "data/pairwise_knockouts_run_summary.csv"
+)
+pw_ko_data <- read.csv(
+  pw_ko_data_loc,
+  na.strings="NONE"
+)
+```
+
+Define data formatting functions, common factor levels
+
+```{r}
+get_env_chg_rate_label <- function(env_chg_rate, env_type) {
+  if (env_chg_rate == "none" && env_type=="consta") {
+    return("none-a")
+  } else if (env_chg_rate == "none" && env_type=="constb") {
+    return("none-b")
+  } else if (env_chg_rate=="30") {
+    return("30")
+  } else if (env_chg_rate=="300") {
+    return("300")
+  } else if (env_chg_rate=="3000") {
+    return("3000")
+  } else {
+    return("unknown")
+  }
+}
+
+get_env_type_label <- function(env_type) {
+  if (env_type=="consta" || env_type=="constb") {
+    return("const")
+  } else if (env_type=="cycling") {
+    return("cycling")
+  } else if (env_type=="random") {
+    return("random")
+  }
+}
+
+# Simplify replicate IDs (start at 0 for each treatment)
+ls_simplify_replicate_id <- function(ref_data, e, m, rep_id) {
+  treatment_data <- filter(
+    ref_data,
+    (env_condition==e) & (COPY_MUT_PROB==m)
+  )
+  rep_ids <- as.integer(levels(factor(treatment_data$replicate_id)))
+  rep_id_map <- as.data.frame(rep_ids)
+  rep_id_map$order <- order(rep_id_map$rep_ids)
+  return(filter(rep_id_map, rep_ids==rep_id)$order)
+}
+
+get_final_mut_rate <- function(seed) {
+  filtered_data <- filter(summary_data, RANDOM_SEED==seed)
+  return(filtered_data$final_average_copy_mutation_rate)
+}
+
+get_dom_match_score_env_a <- function(seed) {
+  filtered_data <- filter(summary_data, RANDOM_SEED==seed)
+  return(filtered_data$dom_match_score_env_a)
+}
+
+env_chg_rate_factor_levels <- c(
+  "none",
+  "30",
+  "300",
+  "3000"
+)
+env_chg_rate_label_factor_levels <- c(
+  "none-a",
+  "none-b",
+  "30",
+  "300",
+  "3000"
+)
+
+```
+
+Data cleanup/formatting
+
+```{r}
+# ---- summary_data ----
+summary_data$COPY_MUT_PROB <- as.factor(
+  summary_data$COPY_MUT_PROB
+)
+summary_data$env_chg_rate <- factor(
+  summary_data$env_chg_rate,
+  env_chg_rate_factor_levels
+)
+summary_data$env_condition <- as.factor(
+  summary_data$env_condition
+)
+summary_data$env_type <- as.factor(
+  summary_data$env_type
+)
+summary_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  summary_data$env_chg_rate,
+  summary_data$env_type
+)
+summary_data$env_chg_rate_label <- factor(
+  summary_data$env_chg_rate_label,
+  env_chg_rate_label_factor_levels
+)
+summary_data$env_type_label <- mapply(
+  get_env_type_label,
+  summary_data$env_type
+)
+
+# ---- time_series_data ----
+time_series_data$COPY_MUT_PROB <- as.factor(
+  time_series_data$COPY_MUT_PROB
+)
+time_series_data$env_chg_rate <- as.factor(
+  time_series_data$env_chg_rate
+)
+time_series_data$env_condition <- as.factor(
+  time_series_data$env_condition
+)
+time_series_data$env_type <- as.factor(
+  time_series_data$env_type
+)
+
+time_series_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  time_series_data$env_chg_rate,
+  time_series_data$env_type
+)
+time_series_data$env_chg_rate_label <- factor(
+  time_series_data$env_chg_rate_label,
+  env_chg_rate_label_factor_levels
+)
+time_series_data$env_type_label <- mapply(
+  get_env_type_label,
+  time_series_data$env_type
+)
+
+# ---- ls2_run_summary_data ----
+
+
+# ---- ls2_cooccur_data ----
+
+
+# ---- ls2_pairwise_cooccur_data ----
+
+
+# ---- ls2_phen_dists_data ----
+
+
+# ---- ls2_task_toggle_data ----
+
+
+# ---- pw_ko_data ----
+pw_ko_data$COPY_MUT_PROB <- as.factor(
+  pw_ko_data$COPY_MUT_PROB
+)
+pw_ko_data$env_chg_rate <- as.factor(
+  pw_ko_data$env_chg_rate
+)
+pw_ko_data$env_condition <- as.factor(
+  pw_ko_data$env_condition
+)
+pw_ko_data$env_type <- as.factor(
+  pw_ko_data$env_type
+)
+pw_ko_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  pw_ko_data$env_chg_rate,
+  pw_ko_data$env_type
+)
+pw_ko_data$env_chg_rate_label <- factor(
+  pw_ko_data$env_chg_rate_label,
+  levels=env_chg_rate_label_factor_levels
+)
+pw_ko_data$env_type_label <- mapply(
+  get_env_type_label,
+  pw_ko_data$env_type
+)
+
+pw_ko_data$redundant_sites_per_task <-
+  pw_ko_data$num_redundant_task_sites / pw_ko_data$num_tasks_performed
+pw_ko_data$sites_per_task <-
+  pw_ko_data$num_task_coding_sites / pw_ko_data$num_tasks_performed
+pw_ko_data$prop_multi_task_sites <-
+  pw_ko_data$num_multi_task_sites / pw_ko_data$num_task_coding_sites
+
+pw_ko_longer <- pivot_longer(
+  pw_ko_data,
+  cols=c(
+    "num_and_task_coding_sites",
+    "num_andnot_task_coding_sites",
+    "num_nand_task_coding_sites",
+    "num_not_task_coding_sites",
+    "num_or_task_coding_sites",
+    "num_ornot_task_coding_sites"
+  ),
+  names_to="task_name",
+  values_to="num_sites"
+)
+```
+
+Define focal conditions.
+
+```{r}
+focal_mut_rate <- 0.001
+focal_envs <- c(
+  "env-consta",
+  "env-constb",
+  "env-cycling_rate-300",
+  "env-random_rate-300"
+)
+env_breaks<-c("consta", "constb", "cycling", "random")
+env_labels<-c("Const-A", "Const-B", "Cyclic", "Random")
+
+env_facets <- c(
+  "env-consta"="Const-A",
+  "env-constb"="Const-B",
+  "env-cycling_rate-300"="Cyclic",
+  "env-random_rate-300"="Random"
+)
+env_facet_labeller <- function(variable, value) {
+  return(env_facets[value])
+}
+```
+
+Filter down to focal data
+
+```{r}
+summary_data <- filter(
+  summary_data,
+  COPY_MUT_PROB==focal_mut_rate & env_condition%in%focal_envs
+)
+time_series_data <- filter(
+  time_series_data,
+  COPY_MUT_PROB==focal_mut_rate & env_condition%in%focal_envs
+)
+pw_ko_data <- filter(
+  pw_ko_data,
+  COPY_MUT_PROB==focal_mut_rate & env_condition%in%focal_envs
+)
+pw_ko_longer <- filter(
+  pw_ko_data,
+  COPY_MUT_PROB==focal_mut_rate & env_condition%in%focal_envs
+)
+```
+
+### Miscellaneous setup
+
+```{r}
+# Configure our default graphing theme
+theme_set(theme_cowplot())
+# Palette
+cb_palette <- "Set2"
+alpha <- 0.05
+# Create a directory to store plots
+plot_directory <- paste0(working_directory, "plots-env-effect-on-variation/")
+dir.create(plot_directory, showWarnings=FALSE)
+```
+
+## True replication rate
+
+### Early in experiment
+
+```{r}
+ggplot(
+    filter(time_series_data, update < 10000),
+    aes(
+      x=update,
+      y=avg_true_replication_rate,
+      fill=env_condition,
+      color=env_condition
+    )
+  ) +
+  stat_summary(geom="line", fun=mean) +
+  stat_summary(
+    geom="ribbon",
+    fun.data="mean_cl_boot",
+    fun.args=list(conf.int=0.95),
+    alpha=0.2,
+    linetype=0
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  theme(
+    legend.position="bottom"
+  )
+
+ggsave(
+  paste0(plot_directory, "avg_true_replication_rate_ot-early.pdf"),
+  width=15,
+  height=10
+)
+```
+
+### Entire experiment
+
+```{r}
+ggplot(
+    time_series_data,
+    aes(
+      x=update,
+      y=avg_true_replication_rate,
+      fill=env_condition,
+      color=env_condition
+    )
+  ) +
+  stat_summary(geom="line", fun=mean) +
+  stat_summary(
+    geom="ribbon",
+    fun.data="mean_cl_boot",
+    fun.args=list(conf.int=0.95),
+    alpha=0.2,
+    linetype=0
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  theme(
+    legend.position="bottom"
+  )
+
+ggsave(
+  paste0(plot_directory, "avg_true_replication_rate_ot.pdf"),
+  width=15,
+  height=10
+)
+```
+
+## Dominant lineage length (genotypes)
+
+```{r}
+ggplot(
+    summary_data,
+    aes(
+      x=env_type,
+      y=dom_lineage_length_genotypes,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  scale_y_continuous(
+    trans=log10_trans()
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    # axis.text.x = element_text(angle = 90),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(plot_directory, "dom_lineage_length_genotypes.pdf")
+)
+```
+
+## Phylogeny analyses
+
+### Phylogenetic diversity
+
+```{r}
+ggplot(
+    summary_data,
+    aes(
+      x=env_type,
+      y=phylo_current_phylogenetic_diversity,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14)
+  )
+ggsave(
+  paste0(
+    plot_directory,
+    "phylo_current_phylogenetic_diversity.pdf"
+  )
+)
+```
+
+### MRCA changes
+
+```{r}
+ggplot(
+    summary_data,
+    aes(
+      x=env_type,
+      y=phylo_mrca_changes,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  # scale_y_continuous(
+  #   trans=log10_trans()
+  # ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14)
+  )
+ggsave(
+  paste0(plot_directory, "phylo_mrca_changes.pdf")
+)
+```
+
+### MRCA depth
+
+```{r}
+ggplot(
+    summary_data,
+    aes(
+      x=env_type,
+      y=phylo_mrca_depth / dom_lineage_length_genotypes,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  scale_y_continuous(
+    trans=log10_trans()
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14)
+  )
+ggsave(
+  paste0(plot_directory, "phylo_mrca_depth.pdf")
+)
+```
+
+## Knockout analyses
+
+### Redundant viability sites
+
+```{r}
+ggplot(
+    pw_ko_data,
+    aes(
+      x=env_type,
+      y=num_redundant_viability_sites,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1)
+  )
+ggsave(
+  paste0(plot_directory, "num_redundant_viability_sites.pdf")
+)
+```
+
+### Viability sites
+
+```{r}
+ggplot(
+    pw_ko_data,
+    aes(
+      x=env_type,
+      y=num_viability_sites,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1)
+  )
+ggsave(
+  paste0(plot_directory, "num_viability_sites.pdf")
+)
+```
+
+```{r}
+kruskal.test(
+  formula=num_viability_sites~env_type,
+  data=pw_ko_data
+)
+```
+
+### Task recovery sites
+
+```{r}
+ggplot(
+    pw_ko_data,
+    aes(
+      x=env_type,
+      y=num_task_recovery_sites,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1)
+  )
+ggsave(
+  paste0(plot_directory, "num_task_recovery_sites.pdf")
+)
+```
+
+```{r}
+kruskal.test(
+  formula=num_task_recovery_sites~env_type,
+  data=pw_ko_data
+)
+```
+
+### Redundant task sites
+
+```{r}
+ggplot(
+    pw_ko_data,
+    aes(
+      x=env_type,
+      y=num_redundant_task_sites,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1)
+  )
+ggsave(
+  paste0(plot_directory, "num_redundant_task_sites.pdf")
+)
+```
+
+```{r}
+kruskal.test(
+  formula=num_redundant_task_sites~env_type,
+  data=pw_ko_data
+)
+```
+
+### Task codings sites
+
+```{r}
+ggplot(
+    pw_ko_data,
+    aes(
+      x=env_type,
+      y=num_task_coding_sites,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1)
+  )
+ggsave(
+  paste0(plot_directory, "num_task_coding_sites.pdf")
+)
+```
+
+### Average sites per task
+
+```{r}
+ggplot(
+    pw_ko_data,
+    aes(
+      x=env_type,
+      y=sites_per_task,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1)
+  )
+ggsave(
+  paste0(plot_directory, "sites_per_task.pdf")
+)
+```
+
+### Sites per task
+
+```{r}
+ggplot(
+    filter(
+      pw_ko_longer,
+      num_sites>0
+    ),
+    aes(
+      x=env_type,
+      y=num_sites,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  facet_wrap(
+    ~task_name,
+    nrow=1
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1)
+  )
+ggsave(
+  paste0(plot_directory, "pw_num_task_sites_by_task.pdf"),
+  height=10,
+  width=20
+)
+```
+
+### Multi-task sites (overlap)
+
+```{r}
+ggplot(
+    pw_ko_data,
+    aes(
+      x=env_type,
+      y=prop_multi_task_sites,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1)
+  )
+ggsave(
+  paste0(plot_directory, "prop_multi_task_sites.pdf")
+)
+```
+
+```{r}
+kruskal.test(
+  formula=prop_multi_task_sites~env_type,
+  data=pw_ko_data
+)
+```
+
+## Mutational landscape analyses
+
+
+
+
+## Manuscript figures
+
+
+
