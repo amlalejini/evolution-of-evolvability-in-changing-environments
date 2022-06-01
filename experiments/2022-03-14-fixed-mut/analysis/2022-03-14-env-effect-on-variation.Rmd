@@ -512,7 +512,7 @@ theme_set(theme_cowplot())
 cb_palette <- "Set2"
 alpha <- 0.05
 # Create a directory to store plots
-plot_directory <- paste0(working_directory, "plots-env-effect-on-variation/")
+plot_directory <- paste0(working_directory, "plots/env-effect-on-variation/")
 dir.create(plot_directory, showWarnings=FALSE)
 ```
 
@@ -630,9 +630,7 @@ ggplot(
   ) +
   theme(
     legend.position="none",
-    axis.text=element_text(size=14),
-    # axis.text.x = element_text(angle = 90),
-    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+    axis.text=element_text(size=14)
   )
 ggsave(
   paste0(plot_directory, "dom_lineage_length_genotypes.pdf")
@@ -1691,6 +1689,20 @@ ggplot(
 
 ggsave(
   paste0(plot_directory, "total_npmi_step-2.pdf")
+)
+```
+
+```{r}
+kruskal.test(
+  formula=total_npmi~env_type,
+  data=ls2_run_summary_data
+)
+
+pairwise.wilcox.test(
+  x = ls2_run_summary_data$total_npmi,
+  g = ls2_run_summary_data$env_type,
+  p.adjust.method = "bonferroni",
+  exact=FALSE
 )
 ```
 
