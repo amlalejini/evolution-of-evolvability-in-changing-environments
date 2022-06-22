@@ -2,6 +2,8 @@
 
 Replicate variable mutation rate experiments.
 
+NOTE: This experiment used vanilla Avida.
+
 Conditions
 
 - Environment
