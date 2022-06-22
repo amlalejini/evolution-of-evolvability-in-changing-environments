@@ -322,7 +322,7 @@ ggsave(
 ggplot(
     summary_data,
     aes(
-      x=env_chg_rate_label,
+      x=COPY_MUT_PROB,
       y=avg_true_replication_rate,
       fill=env_condition
     )
@@ -353,7 +353,7 @@ ggplot(
     trans=log10_trans()
   ) +
   facet_grid(
-    COPY_MUT_PROB~env_type_label,
+    env_chg_rate_label~env_type_label,
     scales="free_x"
   ) +
   theme(

@@ -253,6 +253,7 @@ ls2_run_summary_data$env_type_label <- mapply(
   get_env_type_label,
   ls2_run_summary_data$env_type
 )
+ls2_run_summary_data$total_abs_npmi <- ls2_run_summary_data$expected_npmi + ls2_run_summary_data$unexpected_npmi
 
 # ---- ls2_cooccur_data ----
 ls2_cooccur_data$COPY_MUT_PROB <- as.factor(
@@ -387,7 +388,44 @@ ls2_phen_dists_data$env_type_label <- mapply(
 )
 
 # ---- ls2_task_toggle_data ----
+ls2_task_toggle_data$COPY_MUT_PROB <- as.factor(
+  ls2_task_toggle_data$COPY_MUT_PROB
+)
+ls2_task_toggle_data$env_chg_rate <- as.factor(
+  ls2_task_toggle_data$env_chg_rate
+)
+ls2_task_toggle_data$env_condition <- as.factor(
+  ls2_task_toggle_data$env_condition
+)
+ls2_task_toggle_data$env_type <- as.factor(
+  ls2_task_toggle_data$env_type
+)
+ls2_task_toggle_data$num_tasks_toggled <- factor(
+  ls2_task_toggle_data$num_tasks_toggled,
+  levels=c(
+    -1,
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  )
+)
 
+ls2_task_toggle_data$RANDOM_SEED <- as.factor(
+  ls2_task_toggle_data$RANDOM_SEED
+)
+ls2_task_toggle_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  ls2_task_toggle_data$env_chg_rate,
+  ls2_task_toggle_data$env_type
+)
+ls2_task_toggle_data$env_chg_rate_label <- factor(
+  ls2_task_toggle_data$env_chg_rate_label,
+  levels=env_chg_rate_label_factor_levels
+)
 
 # ---- pw_ko_data ----
 pw_ko_data$COPY_MUT_PROB <- as.factor(
@@ -499,6 +537,11 @@ ls2_pairwise_cooccur_data <- filter(
 
 ls2_phen_dists_data <- filter(
   ls2_phen_dists_data,
+  COPY_MUT_PROB==focal_mut_rate & env_condition%in%focal_envs
+)
+
+ls2_task_toggle_data <- filter(
+  ls2_task_toggle_data,
   COPY_MUT_PROB==focal_mut_rate & env_condition%in%focal_envs
 )
 ```
@@ -1644,6 +1687,70 @@ ggsave(
 )
 ```
 
+### Viable mutants that toggle one task
+
+```{r}
+ggplot(
+    filter(
+      ls2_task_toggle_data,
+      (num_tasks_toggled==1)
+    ),
+    aes(
+      x=env_type,
+      y=prop_of_viable,
+      # y=num_mutants,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = 1,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  scale_x_discrete(
+    name="Mutation rate"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14)
+  )
+```
+
+```{r}
+toggle_one_task_data <- filter(
+      ls2_task_toggle_data,
+      (num_tasks_toggled==1)
+    )
+kruskal.test(
+  formula=prop_of_viable~env_type,
+  data=toggle_one_task_data
+)
+
+pairwise.wilcox.test(
+  x = toggle_one_task_data$prop_of_viable,
+  g = toggle_one_task_data$env_type,
+  p.adjust.method = "bonferroni",
+  exact=FALSE
+)
+```
+
 ### Total NPMI
 
 ```{r}
@@ -1704,6 +1811,68 @@ pairwise.wilcox.test(
   p.adjust.method = "bonferroni",
   exact=FALSE
 )
+```
+
+### Total ABS(NPMI)
+
+```{r}
+# ggplot(
+#     ls2_run_summary_data,
+#     aes(
+#       x=env_type,
+#       y=total_abs_npmi,
+#       fill=env_condition
+#     )
+#   ) +
+#   geom_flat_violin(
+#     position = position_nudge(x = .2, y = 0),
+#     alpha = .8,
+#     adjust=1.5
+#   ) +
+#   geom_point(
+#     mapping=aes(color=env_condition),
+#     position = position_jitter(width = .15),
+#     size = .5,
+#     alpha = 0.8
+#   ) +
+#   geom_boxplot(
+#     width = .1,
+#     outlier.shape = NA,
+#     alpha = 0.5
+#   ) +
+#   geom_hline(
+#     yintercept=0,
+#     linetype="dashed",
+#     size=0.5
+#   ) +
+#   scale_fill_brewer(
+#     palette=cb_palette
+#   ) +
+#   scale_color_brewer(
+#     palette=cb_palette
+#   ) +
+#   theme(
+#     legend.position="none",
+#     axis.text=element_text(size=14)
+#   )
+
+# ggsave(
+#   paste0(plot_directory, "total_abs_npmi_step-2.pdf")
+# )
+```
+
+```{r}
+# kruskal.test(
+#   formula=total_npmi~env_type,
+#   data=ls2_run_summary_data
+# )
+
+# pairwise.wilcox.test(
+#   x = ls2_run_summary_data$total_npmi,
+#   g = ls2_run_summary_data$env_type,
+#   p.adjust.method = "bonferroni",
+#   exact=FALSE
+# )
 ```
 
 ### Total NPMI by task pair
@@ -1926,7 +2095,186 @@ ggsave(
 
 ## Manuscript figures
 
-<!-- todo -->
+### Phenotype accessibility
+
+#### Cyclic environment results in more mutants that can flip phenotype
+
+```{r}
+fig_num_mutants_that_flip <-
+  ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_type,
+      y=num_viable_mutants_flip_env,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    scale="area",
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = 1,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  scale_y_continuous(
+    name="Mutants adapted to\nalternate environment (log scale)",
+    # trans=log10_trans()
+    trans=pseudo_log_trans(sigma=1,base=10),
+    breaks=c(0, 10, 100, 1000, 10000, 100000, 1000000)
+  ) +
+  scale_x_discrete(
+    name="Environment",
+    breaks=env_breaks,
+    limits=env_breaks,
+    labels=env_labels
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14)
+  )
+fig_num_mutants_that_flip
+
+
+ggsave(
+  filename=paste0(plot_directory, "2022-03-14-mutants-fip-env-figure.pdf"),
+  plot=fig_num_mutants_that_flip,
+  width=12,
+  height=4
+  # base_height=6
+  # base_asp=2
+)
+```
+
+### Total normalized pointwise mutual information
+
+```{r}
+fig_total_npmi <-
+  ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_type,
+      y=total_npmi,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    scale="area",
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = 1,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  geom_hline(
+    yintercept=0,
+    linetype="dashed",
+    size=0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  scale_y_continuous(
+    name="Total NPMI"
+  ) +
+  scale_x_discrete(
+    name="Environment",
+    breaks=env_breaks,
+    limits=env_breaks,
+    labels=env_labels
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14)
+  )
+```
+
+### Matrices
+
+```{r}
+fig_avg_nmpi_matrices <-
+  ggplot(
+    ls2_cooccur_data,
+    aes(
+      x=task_1_id,
+      y=task_2_id,
+      fill=npmi_avg
+    )
+  ) +
+  geom_tile() +
+  scale_y_discrete(
+    "Task ID"
+  ) +
+  scale_x_discrete(
+    "Task ID"
+  ) +
+  scale_fill_distiller(
+    name="Avg. NPMI",
+    palette = "RdBu",
+    limits=c(-1.0, 1.0),
+    breaks=c(-1, -0.5, 0.0, 0.5, 1.0)
+  ) +
+  facet_wrap(
+    ~env_condition,
+    labeller=as_labeller(env_facets)
+  )
+fig_avg_nmpi_matrices
+```
+
+### Combined
+
+```{r}
+grid <- plot_grid(
+  fig_avg_nmpi_matrices +
+    theme(
+      legend.position="bottom",
+      # strip.text.y=element_text(size=10),
+      legend.key.width=unit(1.5, "cm")
+    ),
+  fig_total_npmi,
+  nrow=1,
+  ncol=2,
+  labels="auto",
+  rel_widths = c(1, 1.2)
+)
+grid
+
+ggsave(
+  filename=paste0(plot_directory, "2022-03-14-npmi-figure.pdf"),
+  plot=grid,
+  width=12,
+  height=6
+  # base_height=6
+  # base_asp=2
+)
+```
 
 
 

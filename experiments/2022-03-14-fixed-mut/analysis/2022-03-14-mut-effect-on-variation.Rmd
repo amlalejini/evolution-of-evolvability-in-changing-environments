@@ -387,7 +387,44 @@ ls2_phen_dists_data$env_type_label <- mapply(
 )
 
 # ---- ls2_task_toggle_data ----
+ls2_task_toggle_data$COPY_MUT_PROB <- as.factor(
+  ls2_task_toggle_data$COPY_MUT_PROB
+)
+ls2_task_toggle_data$env_chg_rate <- as.factor(
+  ls2_task_toggle_data$env_chg_rate
+)
+ls2_task_toggle_data$env_condition <- as.factor(
+  ls2_task_toggle_data$env_condition
+)
+ls2_task_toggle_data$env_type <- as.factor(
+  ls2_task_toggle_data$env_type
+)
+ls2_task_toggle_data$num_tasks_toggled <- factor(
+  ls2_task_toggle_data$num_tasks_toggled,
+  levels=c(
+    -1,
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  )
+)
 
+ls2_task_toggle_data$RANDOM_SEED <- as.factor(
+  ls2_task_toggle_data$RANDOM_SEED
+)
+ls2_task_toggle_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  ls2_task_toggle_data$env_chg_rate,
+  ls2_task_toggle_data$env_type
+)
+ls2_task_toggle_data$env_chg_rate_label <- factor(
+  ls2_task_toggle_data$env_chg_rate_label,
+  levels=env_chg_rate_label_factor_levels
+)
 
 # ---- pw_ko_data ----
 pw_ko_data$COPY_MUT_PROB <- as.factor(
@@ -428,7 +465,7 @@ pw_ko_longer <- pivot_longer(
   cols=c(
     "num_and_task_coding_sites",
     "num_andnot_task_coding_sites",
-    "num_nand_task_codi\ng_sites",
+    "num_nand_task_coding_sites",
     "num_not_task_coding_sites",
     "num_or_task_coding_sites",
     "num_ornot_task_coding_sites"
@@ -500,6 +537,11 @@ ls2_pairwise_cooccur_data <- filter(
 
 ls2_phen_dists_data <- filter(
   ls2_phen_dists_data,
+  COPY_MUT_PROB%in%focal_mut_rates & env_condition%in%focal_envs
+)
+
+ls2_task_toggle_data <- filter(
+  ls2_task_toggle_data,
   COPY_MUT_PROB%in%focal_mut_rates & env_condition%in%focal_envs
 )
 ```
@@ -1402,6 +1444,151 @@ ggsave(
 )
 ```
 
+### Number that flip versus proportion that don't change
+
+```{r}
+get_num_mutants_same_phenotype <- function(seed) {
+  toggle_data <- filter(
+    ls2_task_toggle_data,
+    (num_tasks_toggled==0) & (RANDOM_SEED == seed)
+  )
+  return(toggle_data$num_mutants)
+}
+
+# ls2_phen_dists_data
+get_num_mutants_alt_adapted_phenotype <- function(seed) {
+  adapted_data <- filter(
+    ls2_phen_dists_data,
+    (distance %in% c("0", "1")) & (RANDOM_SEED == seed)
+  )
+  num_mutants <- sum(adapted_data$count_env_b)
+  return(num_mutants)
+}
+
+ls2_run_summary_data$num_mutants_same_phenotype <- mapply(
+  get_num_mutants_same_phenotype,
+  ls2_run_summary_data$RANDOM_SEED
+)
+ls2_run_summary_data$prop_viable_same_phenotype <- ls2_run_summary_data$num_mutants_same_phenotype / ls2_run_summary_data$num_viable
+ls2_run_summary_data$prop_viable_alt_phenotype <- ls2_run_summary_data$num_viable_mutants_flip_env / ls2_run_summary_data$num_viable
+
+
+ls2_run_summary_data$num_mutants_alt_adapted_phen <- mapply(
+  get_num_mutants_alt_adapted_phenotype,
+  ls2_run_summary_data$RANDOM_SEED
+)
+ls2_run_summary_data$prop_viable_alt_adapted_phen <- ls2_run_summary_data$num_mutants_alt_adapted_phen / ls2_run_summary_data$num_viable
+ls2_run_summary_data$prop_viable_improve_b_phen <- ls2_run_summary_data$num_viable_mutants_improve_env_b / ls2_run_summary_data$num_viable
+
+ggplot(
+    filter(
+      ls2_run_summary_data,
+      env_type%in%c("cycling")
+    ),
+    aes(
+      x=prop_viable_same_phenotype,
+      # y=prop_viable_alt_phenotype,
+      # y=num_viable_mutants_improve_env_b / num_viable,
+      y=num_mutants_alt_adapted_phen / num_viable,
+      fill=COPY_MUT_PROB,
+      color=COPY_MUT_PROB
+    )
+  ) +
+  geom_point(
+    mapping=aes(
+      color=COPY_MUT_PROB,
+      fill=COPY_MUT_PROB
+    ),
+  ) +
+  geom_smooth(
+    method="lm"
+    # fill="#0077ff76"
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  # scale_y_continuous(
+  #   trans=pseudo_log_trans(sigma=1,base=10)
+    # breaks=c(0, 10, 100, 1000, 10000, 100000, 1000000)
+  # ) +
+  # scale_x_continuous(
+  #   trans=pseudo_log_trans(sigma=1,base=10)
+  #   # breaks=c(0, 10, 100, 1000, 10000, 100000, 1000000)
+  # ) +
+  facet_wrap(
+    ~env_type
+  ) +
+  theme(
+    legend.position="bottom",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1)
+    # panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(plot_directory, "prop_alt_adapted_vs_prop_same_phen-2.pdf")
+)
+```
+
+```{r}
+temp_data <- pivot_longer(
+  ls2_run_summary_data,
+  cols=c(
+    "prop_viable_improve_b_phen",
+    "prop_viable_alt_adapted_phen"
+  ),
+  names_to="improvement_level",
+  values_to="prop"
+)
+
+ggplot(
+    filter(
+      temp_data,
+      env_type%in%c("cycling")
+    ),
+    aes(
+      x=prop_viable_same_phenotype,
+      # y=prop_viable_alt_phenotype,
+      # y=num_viable_mutants_improve_env_b / num_viable,
+      y=prop,
+      linetype=improvement_level,
+      fill=COPY_MUT_PROB,
+      color=COPY_MUT_PROB
+    )
+  ) +
+  geom_point(
+    mapping=aes(
+      color=COPY_MUT_PROB,
+      fill=COPY_MUT_PROB,
+      shape=improvement_level
+    ),
+  ) +
+  geom_smooth(
+    method="lm"
+    # fill="#0077ff76"
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  facet_wrap(
+    ~env_type
+  ) +
+  theme(
+    legend.position="bottom",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1)
+    # panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(plot_directory, "out.pdf")
+)
+```
+
 ### Number of viable mutants that gain tasks
 
 ```{r}
@@ -1740,5 +1927,411 @@ ggsave(
 
 ## Manuscript figures
 
-<!-- todo -->
+### Mutation rate
 
+```{r}
+fig_num_mutants_that_flip_by_mut_rate <-
+  ggplot(
+    filter(
+      ls2_run_summary_data,
+      env_condition=="env-cycling_rate-300"
+    ),
+    aes(
+      x=COPY_MUT_PROB,
+      y=num_viable_mutants_flip_env
+    )
+  ) +
+  geom_flat_violin(
+    fill="#8DA0CB",
+    scale="area",
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    fill="#8DA0CB",
+    color="#8DA0CB",
+    position = position_jitter(width = .15),
+    size = 1,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    fill="#8DA0CB",
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_y_continuous(
+    name="Mutants adapted to\nalternate environment (log scale)",
+    # trans=log10_trans()
+    trans=pseudo_log_trans(sigma=1,base=10),
+    breaks=c(0, 10, 100, 1000, 10000, 100000, 1000000)
+  ) +
+  scale_x_discrete(
+    name="Mutation rate"
+  ) +
+  facet_wrap(
+    ~env_condition,
+    nrow=1,
+    labeller=as_labeller(env_facets)
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14)
+  )
+fig_num_mutants_that_flip_by_mut_rate
+
+
+ggsave(
+  filename=paste0(plot_directory, "2022-03-14-mutants-fip-env-by-mut-rate-figure.pdf"),
+  plot=fig_num_mutants_that_flip_by_mut_rate,
+  width=5,
+  height=4
+  # base_height=6
+  # base_asp=2
+)
+```
+
+### High mutation rate result in more robust genotypes
+
+```{r}
+limits<-c(0.2, 1.0)
+```
+
+#### Viability
+
+```{r}
+fig_prop_viable <-
+  ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=COPY_MUT_PROB,
+      y=prop_viable,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    scale="area",
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = 1,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  # stat_summary(
+  #   geom="line",
+  #   fun="mean",
+  #   group=1
+  # ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  scale_x_discrete(
+    name="Mutation rate"
+  ) +
+  scale_y_continuous(
+    name="Proportion viable"
+    # limits=limits
+  ) +
+  facet_wrap(
+    ~env_condition,
+    nrow=1,
+    labeller=as_labeller(env_facets)
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14)
+  )
+fig_prop_viable
+```
+
+#### Task phenotype
+
+```{r}
+fig_phenotypic_profile_robustness <-
+  ggplot(
+    filter(
+      ls2_task_toggle_data,
+      (num_tasks_toggled==0) &
+      COPY_MUT_PROB%in%focal_mut_rates & env_condition%in%focal_envs
+    ),
+    aes(
+      x=COPY_MUT_PROB,
+      y=prop_of_viable,
+      # y=num_mutants,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = 1,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  # geom_hline(
+  #   yintercept=0,
+  #   linetype="dashed",
+  #   size=0.5
+  # ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  scale_y_continuous(
+    name="Proportion viable with same phenotype"
+  ) +
+  scale_x_discrete(
+    name="Mutation rate"
+  ) +
+  facet_wrap(
+    ~env_condition,
+    nrow=1,
+    labeller=as_labeller(env_facets)
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14)
+  )
+fig_phenotypic_profile_robustness
+```
+
+#### Combined
+
+```{r}
+grid <- plot_grid(
+  fig_prop_viable +
+    scale_y_continuous(
+      name="\nProportion viable"
+    ) +
+    theme(
+      axis.title.x = element_blank(),
+      axis.text.x = element_blank()
+    ),
+  fig_phenotypic_profile_robustness +
+    scale_y_continuous(
+      name="Proportion viable\nwith same phenotype"
+    ),
+  nrow=2,
+  ncol=1,
+  labels="auto",
+  axis="r"
+)
+grid
+
+ggsave(
+  filename=paste0(plot_directory, "2022-03-14-robustness-figure.pdf"),
+  plot=grid,
+  width=12,
+  height=6
+  # base_height=6
+  # base_asp=2
+)
+```
+
+### Robustness
+
+#### Number of coding sites
+
+```{r}
+fig_num_task_coding_sites <-
+  ggplot(
+    pw_ko_data,
+    aes(
+      x=COPY_MUT_PROB,
+      y=sites_per_task,
+      # y=num_task_coding_sites,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = 1,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  scale_y_continuous(
+    name="Avg. sites per task"
+  ) +
+  scale_x_discrete(
+    name="Mutation rate"
+  ) +
+  facet_wrap(
+    ~env_condition,
+    nrow=1,
+    labeller=as_labeller(env_facets)
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14)
+  )
+fig_num_task_coding_sites
+```
+
+#### Redundancy
+
+```{r}
+fig_num_redundant_task_sites <-
+  ggplot(
+    pw_ko_data,
+    aes(
+      x=COPY_MUT_PROB,
+      # y=num_redundant_task_sites,
+      y=redundant_sites_per_task,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = 1,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  scale_y_continuous(
+    name="Redundant sites per task"
+  ) +
+  scale_x_discrete(
+    name="Mutation rate"
+  ) +
+  facet_wrap(
+    ~env_condition,
+    nrow=1,
+    labeller=as_labeller(env_facets)
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14)
+  )
+fig_num_redundant_task_sites
+```
+
+#### Function Overlap
+
+```{r}
+fig_prop_multi_task_sites <-
+  ggplot(
+    pw_ko_data,
+    aes(
+      x=COPY_MUT_PROB,
+      y=prop_multi_task_sites,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = 1,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  scale_y_continuous(
+    name="Proportion shared task sites"
+  ) +
+  scale_x_discrete(
+    name="Mutation rate"
+  ) +
+  facet_wrap(
+    ~env_condition,
+    nrow=1,
+    labeller=as_labeller(env_facets)
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14)
+  )
+fig_prop_multi_task_sites
+```
+
+#### Combined
+
+```{r}
+
+ggsave(
+  filename=paste0(plot_directory, "2022-03-14-num-redundant-sites.pdf"),
+  plot=fig_num_redundant_task_sites,
+  width=12,
+  height=4
+)
+ggsave(
+  filename=paste0(plot_directory, "2022-03-14-prop-multi-task-sites.pdf"),
+  plot=fig_prop_multi_task_sites,
+  width=12,
+  height=4
+)
+ggsave(
+  filename=paste0(plot_directory, "2022-03-14-sites-per-task.pdf"),
+  plot=fig_num_task_coding_sites,
+  width=12,
+  height=4
+)
+```

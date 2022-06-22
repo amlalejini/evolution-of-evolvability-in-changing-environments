@@ -385,6 +385,53 @@ ls2_cooccur_data$env_type_label <- mapply(
 ```
 
 ```{r}
+ls2_pairwise_cooccur_data_loc <- paste0(
+  working_directory,
+  "data/landscape_task_cooccurrence_step-2.csv"
+)
+ls2_pairwise_cooccur_data <- read.csv(ls2_pairwise_cooccur_data_loc, na.strings="NONE")
+
+ls2_pairwise_cooccur_data$COPY_MUT_PROB <- as.factor(
+  ls2_pairwise_cooccur_data$COPY_MUT_PROB
+)
+ls2_pairwise_cooccur_data$env_chg_rate <- as.factor(
+  ls2_pairwise_cooccur_data$env_chg_rate
+)
+ls2_pairwise_cooccur_data$env_condition <- as.factor(
+  ls2_pairwise_cooccur_data$env_condition
+)
+ls2_pairwise_cooccur_data$env_type <- as.factor(
+  ls2_pairwise_cooccur_data$env_type
+)
+ls2_pairwise_cooccur_data$task_1_id <- as.factor(
+  ls2_pairwise_cooccur_data$task_1_id
+)
+ls2_pairwise_cooccur_data$task_2_id <- as.factor(
+  ls2_pairwise_cooccur_data$task_2_id
+)
+
+ls2_pairwise_cooccur_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  ls2_pairwise_cooccur_data$env_chg_rate,
+  ls2_pairwise_cooccur_data$env_type
+)
+ls2_pairwise_cooccur_data$env_chg_rate_label <- factor(
+  ls2_pairwise_cooccur_data$env_chg_rate_label,
+  levels=c(
+    "none-a",
+    "none-b",
+    "30",
+    "300",
+    "3000"
+  )
+)
+ls2_pairwise_cooccur_data$env_type_label <- mapply(
+  get_env_type_label,
+  ls2_pairwise_cooccur_data$env_type
+)
+```
+
+```{r}
 ls2_phen_dists_data_loc <- paste0(working_directory, "data/mutant_phenotype_distances_step-2.csv")
 ls2_phen_dists_data <- read.csv(ls2_phen_dists_data_loc, na.strings="NONE")
 
@@ -467,7 +514,7 @@ ls2_phen_dists_data$env_type_label <- mapply(
 Load 2-step task toggle count distribution data
 
 ```{r}
-ls2_task_toggle_data_loc <- paste0(working_directory, "data/mutant_task_toggle_distribution_step-1.csv")
+ls2_task_toggle_data_loc <- paste0(working_directory, "data/mutant_task_toggle_distribution_step-2.csv")
 ls2_task_toggle_data <- read.csv(ls2_task_toggle_data_loc, na.strings="NONE")
 
 ls2_task_toggle_data$COPY_MUT_PROB <- as.factor(
@@ -508,7 +555,7 @@ ls2_task_toggle_simplify_replicate_id <- function(e, m, rep_id) {
   return(filter(rep_id_map, rep_ids==rep_id)$order)
 }
 ls2_task_toggle_data$rep_id <- mapply(
-  ls1_task_toggle_simplify_replicate_id,
+  ls2_task_toggle_simplify_replicate_id,
   ls2_task_toggle_data$env_condition,
   ls2_task_toggle_data$COPY_MUT_PROB,
   ls2_task_toggle_data$RANDOM_SEED
@@ -1894,6 +1941,127 @@ ggsave(
 )
 ```
 
+```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=COPY_MUT_PROB,
+      y=total_npmi,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  geom_hline(
+    yintercept=0,
+    linetype="dashed",
+    size=0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  facet_grid(
+    env_chg_rate_label~env_type_label,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "total_npmi_step-2_bymut.pdf")
+)
+```
+
+## Total NPMI broken down by task pair
+
+```{r}
+m <- 0.001
+e <- c(
+  "env-consta",
+  "env-constb",
+  "env-cycling_rate-300",
+  "env-random_rate-300"
+)
+ggplot(
+    filter(
+      ls2_pairwise_cooccur_data,
+      COPY_MUT_PROB==m & env_condition%in%e
+    ),
+    aes(
+      x=task_2_id,
+      y=npmi,
+      fill=env_condition
+    )
+  ) +
+  # geom_flat_violin(
+  #   position = position_nudge(x = .2, y = 0),
+  #   alpha = .8,
+  #   adjust=1.5
+  # ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  # geom_boxplot(
+  #   width = .1,
+  #   outlier.shape = NA,
+  #   alpha = 0.5
+  # ) +
+  stat_summary(
+    geom="errorbar",
+    fun.data="mean_cl_boot",
+    fun.args=list(conf.int=0.95)
+    # alpha=0.2
+  ) +
+  geom_hline(
+    yintercept=0,
+    linetype="dashed",
+    size=0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  facet_grid(
+    task_1_id~env_type,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x = element_text(angle = 90),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "total_npmi_pairwise_step-2.pdf")
+)
+```
+
 ## Total unexpected NPMI
 
 ### 1-step mutants
@@ -2614,6 +2782,7 @@ ggplot(
 
 ```{r}
 focal_mut_rate <- 0.001
+focal_mut_rates <- c(0.0001, 0.001, 0.01, 0.0316)
 focal_envs <- c(
   "env-consta",
   "env-constb",
@@ -2763,6 +2932,8 @@ ggsave(
 
 ### Phenotype accessibility
 
+#### Cyclic environment results in more mutants that can flip phenotype
+
 ```{r}
 fig_num_mutants_that_flip <-
   ggplot(
@@ -2828,10 +2999,80 @@ ggsave(
 )
 ```
 
+#### Mutation rate
+
+```{r}
+fig_num_mutants_that_flip_by_mut_rate <-
+  ggplot(
+    filter(
+      ls2_run_summary_data,
+      COPY_MUT_PROB%in%focal_mut_rates & env_condition=="env-cycling_rate-300"
+    ),
+    aes(
+      x=COPY_MUT_PROB,
+      y=num_viable_mutants_flip_env
+    )
+  ) +
+  geom_flat_violin(
+    fill="#8DA0CB",
+    scale="area",
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    fill="#8DA0CB",
+    color="#8DA0CB",
+    position = position_jitter(width = .15),
+    size = 1,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    fill="#8DA0CB",
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  # scale_fill_brewer(
+  #   palette=cb_palette
+  # ) +
+  # scale_color_brewer(
+  #   palette=cb_palette
+  # ) +
+  scale_y_continuous(
+    name="Mutants adapted to\nalternate environment (log scale)",
+    # trans=log10_trans()
+    trans=pseudo_log_trans(sigma=1,base=10),
+    breaks=c(0, 10, 100, 1000, 10000, 100000, 1000000)
+  ) +
+  scale_x_discrete(
+    name="Mutation rate"
+  ) +
+  facet_wrap(
+    ~env_condition,
+    nrow=1,
+    labeller=as_labeller(env_facets)
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14)
+  )
+fig_num_mutants_that_flip_by_mut_rate
+
+
+ggsave(
+  filename=paste0(plot_directory, "2022-03-14-mutants-fip-env-by-mut-rate-figure.pdf"),
+  plot=fig_num_mutants_that_flip_by_mut_rate,
+  width=5,
+  height=4
+  # base_height=6
+  # base_asp=2
+)
+```
+
 ### High mutation rate result in more robust genotypes
 
 ```{r}
-focal_mut_rates <- c(0.0001, 0.001, 0.01, 0.0316)
 limits<-c(0.2, 1.0)
 ```
 
