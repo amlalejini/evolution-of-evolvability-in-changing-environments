@@ -23,6 +23,7 @@ pyenv/
 
 # Data
 data/
+*.tar.gz
 
 # Local scratch directories
 experiments/*/analysis/test
