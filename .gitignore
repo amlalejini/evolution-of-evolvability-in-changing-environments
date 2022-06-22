@@ -26,3 +26,4 @@ data/
 
 # Local scratch directories
 experiments/*/analysis/test
+local/
