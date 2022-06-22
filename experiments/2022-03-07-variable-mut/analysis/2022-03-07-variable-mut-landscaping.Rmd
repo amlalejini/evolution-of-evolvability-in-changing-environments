@@ -422,6 +422,16 @@ ls2_run_summary_data$final_average_copy_mutation_rate <- mapply(
   get_final_mut_rate,
   ls2_run_summary_data$RANDOM_SEED
 )
+
+get_dom_match_score_env_a <- function(seed) {
+  filtered_data <- filter(summary_data, RANDOM_SEED==seed)
+  return(filtered_data$dom_match_score_env_a)
+}
+
+ls2_phen_dists_data$dom_match_score_env_a <- mapply(
+  get_dom_match_score_env_a,
+  ls2_phen_dists_data$RANDOM_SEED
+)
 ```
 
 Miscellaneous setup.
@@ -824,6 +834,151 @@ ggplot(
 
 ggsave(
   paste0(working_directory, "plots/", "avg_dist_to_ancestor_step-2.pdf")
+)
+```
+
+## Number that flip versus proportion that don't change
+
+```{r}
+get_num_mutants_same_phenotype <- function(seed) {
+  toggle_data <- filter(
+    ls2_task_toggle_data,
+    (num_tasks_toggled==0) & (RANDOM_SEED == seed)
+  )
+  return(toggle_data$num_mutants)
+}
+
+# ls2_phen_dists_data
+get_num_mutants_alt_adapted_phenotype <- function(seed) {
+  adapted_data <- filter(
+    ls2_phen_dists_data,
+    (distance %in% c("0", "1")) & (RANDOM_SEED == seed)
+  )
+  num_mutants <- sum(adapted_data$count_env_b)
+  return(num_mutants)
+}
+
+ls2_run_summary_data$num_mutants_same_phenotype <- mapply(
+  get_num_mutants_same_phenotype,
+  ls2_run_summary_data$RANDOM_SEED
+)
+ls2_run_summary_data$prop_viable_same_phenotype <- ls2_run_summary_data$num_mutants_same_phenotype / ls2_run_summary_data$num_viable
+ls2_run_summary_data$prop_viable_alt_phenotype <- ls2_run_summary_data$num_viable_mutants_flip_env / ls2_run_summary_data$num_viable
+
+
+ls2_run_summary_data$num_mutants_alt_adapted_phen <- mapply(
+  get_num_mutants_alt_adapted_phenotype,
+  ls2_run_summary_data$RANDOM_SEED
+)
+ls2_run_summary_data$prop_viable_alt_adapted_phen <- ls2_run_summary_data$num_mutants_alt_adapted_phen / ls2_run_summary_data$num_viable
+ls2_run_summary_data$prop_viable_improve_b_phen <- ls2_run_summary_data$num_viable_mutants_improve_env_b / ls2_run_summary_data$num_viable
+
+ggplot(
+    filter(
+      ls2_run_summary_data,
+      env_type%in%c("cycling")
+    ),
+    aes(
+      x=prop_viable_same_phenotype,
+      # y=prop_viable_alt_phenotype,
+      # y=num_viable_mutants_improve_env_b / num_viable,
+      y=num_mutants_alt_adapted_phen / num_viable,
+      fill=COPY_MUT_PROB,
+      color=COPY_MUT_PROB
+    )
+  ) +
+  geom_point(
+    mapping=aes(
+      color=COPY_MUT_PROB,
+      fill=COPY_MUT_PROB
+    ),
+  ) +
+  geom_smooth(
+    method="lm"
+    # fill="#0077ff76"
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  # scale_y_continuous(
+  #   trans=pseudo_log_trans(sigma=1,base=10)
+    # breaks=c(0, 10, 100, 1000, 10000, 100000, 1000000)
+  # ) +
+  # scale_x_continuous(
+  #   trans=pseudo_log_trans(sigma=1,base=10)
+  #   # breaks=c(0, 10, 100, 1000, 10000, 100000, 1000000)
+  # ) +
+  facet_wrap(
+    ~env_type
+  ) +
+  theme(
+    legend.position="bottom",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1)
+    # panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(plot_directory, "prop_alt_adapted_vs_prop_same_phen-2.pdf")
+)
+```
+
+```{r}
+temp_data <- pivot_longer(
+  ls2_run_summary_data,
+  cols=c(
+    "prop_viable_improve_b_phen",
+    "prop_viable_alt_adapted_phen"
+  ),
+  names_to="improvement_level",
+  values_to="prop"
+)
+
+ggplot(
+    filter(
+      temp_data,
+      env_type%in%c("cycling")
+    ),
+    aes(
+      x=prop_viable_same_phenotype,
+      # y=prop_viable_alt_phenotype,
+      # y=num_viable_mutants_improve_env_b / num_viable,
+      y=prop,
+      linetype=improvement_level,
+      fill=COPY_MUT_PROB,
+      color=COPY_MUT_PROB
+    )
+  ) +
+  geom_point(
+    mapping=aes(
+      color=COPY_MUT_PROB,
+      fill=COPY_MUT_PROB,
+      shape=improvement_level
+    ),
+  ) +
+  geom_smooth(
+    method="lm"
+    # fill="#0077ff76"
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  facet_wrap(
+    ~env_type
+  ) +
+  theme(
+    legend.position="bottom",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1)
+    # panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(plot_directory, "out.pdf")
 )
 ```
 
@@ -1319,6 +1474,47 @@ ggsave(
 )
 ```
 
+## Final mutation rate vs npmi
+
+```{r}
+ggplot(
+    filter(
+      ls2_run_summary_data
+    ),
+    aes(
+      x=total_npmi,
+      y=final_average_copy_mutation_rate
+      # fill=env_condition
+    )
+  ) +
+  geom_point(
+    # mapping=aes(color=env_condition)
+    # position = position_jitter(width = .15)
+  ) +
+  geom_smooth(
+    method="lm"
+  ) +
+  geom_hline(
+    yintercept=0,
+    linetype="dashed",
+    size=0.5
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    # axis.text.x = element_text(angle = 90),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "total_npmi_vs_final_mut_rate_step-2.pdf")
+)
+```
+
 ## Total unexpected NPMI
 
 ### 1-step mutants
@@ -1641,5 +1837,123 @@ ggsave(
   paste0(working_directory, "plots/", "mutant_phen_dist_env_a_step-2.pdf"),
   width=15,
   height=18
+)
+```
+
+## Distance N away from env-A
+
+```{r}
+ggplot(
+    filter(
+      ls2_phen_dists_data,
+      (distance==0) & env_chg_rate_label!="none-b" & dom_match_score_env_a==6
+    ),
+    aes(
+      x=env_chg_rate_label,
+      y=count_env_b,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  geom_hline(
+    yintercept=0,
+    linetype="dashed",
+    size=0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  scale_y_continuous(
+    trans=pseudo_log_trans(sigma=1,base=10),
+    breaks=c(0, 10, 100, 1000, 10000, 100000)
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "mutants_dist-6_env-a_step-2.pdf")
+)
+```
+
+```{r}
+ggplot(
+    filter(
+      ls2_phen_dists_data,
+      (distance==6) & env_chg_rate_label!="none-b" & dom_match_score_env_a==6
+    ),
+    aes(
+      x=env_chg_rate_label,
+      y=count_env_b,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  geom_hline(
+    yintercept=0,
+    linetype="dashed",
+    size=0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  # scale_y_continuous(
+  #   trans=pseudo_log_trans(sigma=1,base=10),
+  #   breaks=c(0, 10, 100, 1000, 10000, 100000)
+  # ) +
+  facet_grid(
+    env_type_label~COPY_MUT_PROB,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "mutants_dist-0_env-a_step-2.pdf")
 )
 ```

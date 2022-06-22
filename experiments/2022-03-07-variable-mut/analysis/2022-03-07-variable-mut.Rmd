@@ -77,6 +77,19 @@ get_env_type_label <- function(env_type) {
     return("random")
   }
 }
+get_combined_env_type_label <- function(env_type) {
+  if (env_type=="consta" || env_type=="constb") {
+    return("cycling+const")
+  } else if (env_type=="cycling") {
+    return("cycling+const")
+  } else if (env_type=="random") {
+    return("random")
+  }
+}
+summary_data$combined_env_type_label <- mapply(
+  get_combined_env_type_label,
+  summary_data$env_type
+)
 summary_data$env_chg_rate_label <- mapply(
   get_env_chg_rate_label,
   summary_data$env_chg_rate,
@@ -198,7 +211,7 @@ ggplot(
     panel.border = element_rect(color = "grey", fill=NA, size=1.5)
   )
 ggsave(
-  paste0(working_directory, "plots/", "final_average_copy_mutation_rate.png")
+  paste0(working_directory, "plots/", "final_average_copy_mutation_rate.pdf")
 )
 ```
 
@@ -302,6 +315,110 @@ ggsave(
 )
 ```
 
+## True replication rate
+
+### Time series
+
+```{r}
+ggplot(
+    time_series_data,
+    # filter(time_series_data, (update%%1000)==0),
+    aes(
+      x=update,
+      y=avg_true_replication_rate,
+      fill=env_condition,
+      color=env_condition
+    )
+  ) +
+  stat_summary(geom="line", fun=mean) +
+  stat_summary(
+    geom="ribbon",
+    fun.data="mean_cl_boot",
+    fun.args=list(conf.int=0.95),
+    alpha=0.2,
+    linetype=0
+  ) +
+  # stat_summary(
+  #   geom="ribbon",
+  #   fun.min=min,
+  #   fun.max=max,
+  #   alpha=0.2,
+  #   linetype=0
+  # ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  scale_y_continuous(
+    trans=log10_trans()
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label
+  ) +
+  theme(
+    legend.position="bottom"
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "avg_true_replication_rate_ot.pdf"),
+  width=15,
+  height=10
+)
+```
+
+### Final
+
+```{r}
+ggplot(
+    summary_data,
+    aes(
+      x=COPY_MUT_PROB,
+      y=avg_true_replication_rate,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  # scale_y_continuous(
+  #   trans=log10_trans()
+  # ) +
+  facet_grid(
+    env_chg_rate_label~env_type_label,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    # axis.text.x = element_text(angle = 90),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "avg_true_replication_rate.pdf")
+)
+```
+
 ## dom_lineage_length_genotypes
 
 ```{r}
@@ -352,3 +469,586 @@ ggsave(
   paste0(working_directory, "plots/", "dom_lineage_length_genotypes.png")
 )
 ```
+
+## Knockout analyses
+
+```{r}
+ko_data_loc <- paste0(working_directory, "data/knockouts_run_summary_extant-only.csv")
+ko_data <- read.csv(ko_data_loc, na.strings="NONE")
+
+ko_data$COPY_MUT_PROB <- as.factor(
+  ko_data$COPY_MUT_PROB
+)
+ko_data$env_chg_rate <- as.factor(
+  ko_data$env_chg_rate
+)
+ko_data$env_condition <- as.factor(
+  ko_data$env_condition
+)
+ko_data$env_type <- as.factor(
+  ko_data$env_type
+)
+
+ko_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  ko_data$env_chg_rate,
+  ko_data$env_type
+)
+ko_data$env_chg_rate_label <- factor(
+  ko_data$env_chg_rate_label,
+  levels=c(
+    "none-a",
+    "none-b",
+    "30",
+    "300",
+    "3000"
+  )
+)
+ko_data$env_type_label <- mapply(
+  get_env_type_label,
+  ko_data$env_type
+)
+ko_data$combined_env_type_label <- mapply(
+  get_combined_env_type_label,
+  ko_data$env_type
+)
+
+get_final_mut_rate <- function(seed) {
+  filtered_data <- filter(summary_data, RANDOM_SEED==seed)
+  return(filtered_data$final_average_copy_mutation_rate)
+}
+ko_data$final_average_copy_mutation_rate <- mapply(
+  get_final_mut_rate,
+  ko_data$RANDOM_SEED
+)
+
+# Sites per task
+ko_data$extant_sites_per_task <- ko_data$extant_num_task_sites / ko_data$extant_num_tasks_performed
+ko_data$extant_prop_multi_task_sites <- ko_data$extant_num_multi_task_sites / ko_data$extant_num_task_sites
+```
+
+### extant_num_tasks_performed
+
+```{r}
+ggplot(
+    ko_data,
+    aes(
+      x=env_chg_rate_label,
+      y=extant_num_tasks_performed,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  # scale_y_continuous(
+  #   trans=log10_trans()
+  # ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "extant_num_tasks_performed.pdf")
+)
+```
+
+### extant_num_task_sites
+
+```{r}
+ggplot(
+    ko_data,
+    # filter(ko_data, extant_num_tasks_performed==3),
+    aes(
+      x=env_chg_rate_label,
+      y=extant_num_task_sites,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  # scale_y_continuous(
+  #   trans=log10_trans()
+  # ) +
+  facet_grid(
+    combined_env_type_label~COPY_MUT_PROB,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "extant_num_task_sites.pdf")
+)
+```
+
+### extant_sites_per_task
+
+```{r}
+ggplot(
+    ko_data,
+    aes(
+      x=env_chg_rate_label,
+      y=extant_sites_per_task,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  # scale_y_continuous(
+
+  # ) +
+  facet_grid(
+    combined_env_type_label~COPY_MUT_PROB,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "extant_sites_per_task.pdf")
+)
+```
+
+### extant_num_multi_task_sites
+
+```{r}
+ggplot(
+    ko_data,
+    aes(
+      x=env_chg_rate_label,
+      y=extant_num_multi_task_sites,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  # scale_y_continuous(
+  #   trans=log10_trans()
+  # ) +
+  facet_grid(
+    combined_env_type_label~COPY_MUT_PROB,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "extant_num_multi_task_sites.pdf")
+)
+```
+
+### extant_prop_multi_task_sites
+
+```{r}
+ggplot(
+    ko_data,
+    aes(
+      x=env_chg_rate_label,
+      y=extant_prop_multi_task_sites,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  # scale_y_continuous(
+  #   trans=log10_trans()
+  # ) +
+  facet_grid(
+    combined_env_type_label~COPY_MUT_PROB,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "extant_prop_multi_task_sites.pdf")
+)
+```
+
+### extant_num_task_env_a_sites
+
+
+### extant_num_task_env_b_sites
+
+
+### extant_num_viability_sites
+
+```{r}
+ggplot(
+    ko_data,
+    aes(
+      x=env_chg_rate_label,
+      y=extant_num_viability_sites,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  # scale_y_continuous(
+  #   trans=log10_trans()
+  # ) +
+  facet_grid(
+    combined_env_type_label~COPY_MUT_PROB,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "extant_num_viability_sites.pdf")
+)
+```
+
+
+### Sites vs final mutation rate
+
+```{r}
+
+ggplot(
+    ko_data,
+    aes(
+      x=final_average_copy_mutation_rate,
+      y=extant_sites_per_task,
+      color=env_condition,
+      fill=env_condition
+    )
+  ) +
+  geom_point() +
+  scale_x_continuous(
+    trans=log10_trans()
+  ) +
+  facet_wrap(~env_condition) +
+  theme(
+    legend.position="bottom"
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "extant_sites_per_task_vs_final_mut_rate.pdf")
+)
+```
+
+## Manuscript Figures
+
+```{r}
+focal_mut_rate <- 0.001
+focal_mut_rates <- c(0.0001, 0.001, 0.01, 0.0316)
+focal_envs <- c(
+  "env-consta",
+  "env-constb",
+  "env-cycling_rate-300",
+  "env-random_rate-300"
+)
+env_breaks<-c("consta", "constb", "cycling", "random")
+env_labels<-c("Const-A", "Const-B", "Cyclic", "Random")
+
+env_facets <- c(
+  "env-consta"="Const-A",
+  "env-constb"="Const-B",
+  "env-cycling_rate-300"="Cyclic",
+  "env-random_rate-300"="Random"
+)
+env_facet_labeller <- function(variable, value) {
+  return(env_facets[value])
+}
+```
+
+
+### Mutation rate over time
+
+```{r}
+fig_mut_rate_ot <-
+  ggplot(
+    filter(
+      time_series_data,
+      # update > 295000 &
+      COPY_MUT_PROB%in%focal_mut_rates & env_condition%in%focal_envs
+    ),
+    aes(
+      x=update,
+      y=mutation_rates_average_copy_mutation_rate,
+      fill=env_condition,
+      color=env_condition
+    )
+  ) +
+  stat_summary(geom="line", fun=mean) +
+  stat_summary(
+    geom="ribbon",
+    fun.data="mean_cl_boot",
+    fun.args=list(conf.int=0.95),
+    alpha=0.2,
+    linetype=0
+  ) +
+  # stat_summary(
+  #   geom="ribbon",
+  #   fun.min=min,
+  #   fun.max=max,
+  #   alpha=0.2,
+  #   linetype=0
+  # ) +
+  scale_fill_brewer(
+    palette=cb_palette,
+    name="Env:",
+    # breaks=env_breaks
+    # limits=env_breaks,
+    labels=env_labels
+  ) +
+  scale_color_brewer(
+    palette=cb_palette,
+    name="Env:",
+    # breaks=env_breaks,
+    # limits=env_breaks,
+    labels=env_labels
+  ) +
+  scale_y_continuous(
+    name="Avg. mutation rate (log scale)",
+    trans=log10_trans()
+  ) +
+  scale_x_continuous(
+    name="Update",
+    breaks=c(0, 100000, 200000, 300000)
+  ) +
+  facet_grid(
+    ~COPY_MUT_PROB
+  ) +
+  theme(
+    legend.position="bottom",
+    axis.text.x=element_text(angle=45,hjust=1)
+  )
+# fig_mut_rate_ot
+```
+
+### True replication rate
+
+```{r}
+#
+fig_replication_rate_ot <-
+  ggplot(
+    filter(
+      time_series_data,
+      # (update%%10000)==0&
+      COPY_MUT_PROB%in%focal_mut_rates & env_condition%in%focal_envs
+    ),
+    aes(
+      x=update,
+      y=avg_true_replication_rate,
+      fill=env_condition,
+      color=env_condition
+    )
+  ) +
+  stat_summary(geom="line", fun=mean) +
+  stat_summary(
+    geom="ribbon",
+    fun.data="mean_cl_boot",
+    fun.args=list(conf.int=0.95),
+    alpha=0.2,
+    linetype=0
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette,
+    name="Env:",
+    # breaks=env_breaks
+    # limits=env_breaks,
+    labels=env_labels
+  ) +
+  scale_color_brewer(
+    palette=cb_palette,
+    name="Env:",
+    # breaks=env_breaks,
+    # limits=env_breaks,
+    labels=env_labels
+  ) +
+  scale_y_continuous(
+    name="Reproduction rate"
+  ) +
+  scale_x_continuous(
+    name="Update",
+    breaks=c(0, 100000, 200000, 300000)
+  ) +
+  facet_grid(
+    ~COPY_MUT_PROB
+  ) +
+  theme(
+    legend.position="bottom",
+    axis.text.x=element_text(angle=45,hjust=1)
+  )
+# fig_replication_rate_ot
+```
+
+### Combined figure
+
+```{r}
+# grid <- plot_grid(
+#   fig_replication_rate_ot +
+#     theme(
+#       axis.title.x = element_blank(),
+#       axis.text.x = element_blank()
+#     ),
+#   fig_mut_rate_ot,
+#   nrow=2,
+#   ncol=1,
+#   labels="auto"
+# )
+# grid
+
+ggsave(
+  filename=paste0(plot_directory, "2022-03-07-mut-rate-figure.pdf"),
+  plot=fig_mut_rate_ot,
+  width=12,
+  height=4
+)
+
+ggsave(
+  filename=paste0(plot_directory, "2022-03-07-repro-rate-figure.pdf"),
+  plot=fig_replication_rate_ot,
+  width=12,
+  height=4
+)
+
+# ggsave(
+#   filename=paste0(plot_directory, "2022-03-07-mut-rate-maintenance-figure.pdf"),
+#   plot=grid,
+#   width=12,
+#   height=6
+# )
+```
+
