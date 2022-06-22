@@ -1,0 +1,692 @@
+# 2022-04-18
+
+## Setup
+
+```{r}
+experiment_slug <- "2022-04-18-chg-rates"
+working_directory <- paste0("experiments/",experiment_slug,"/analysis/")
+```
+### Analysis dependencies
+
+Load all required R libraries
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(scales)
+library(cowplot)
+library(RColorBrewer)
+library(viridis)
+source("https://gist.githubusercontent.com/benmarwick/2a1bb0133ff568cbe28d/raw/fb53bd97121f7f9ce947837ef1a4c65a73bffb3f/geom_flat_violin.R")
+```
+
+These analyses were knit with the following environment:
+
+```{r}
+print(version)
+```
+
+## Load data
+
+
+```{r}
+get_env_chg_rate_label <- function(env_chg_rate, env_type) {
+  if (env_chg_rate == "none" && env_type=="consta") {
+    return("none-a")
+  } else if (env_chg_rate == "none" && env_type=="constb") {
+    return("none-b")
+  } else if (env_chg_rate=="30") {
+    return("30")
+  } else if (env_chg_rate=="50") {
+    return("50")
+  } else if (env_chg_rate=="100") {
+    return("100")
+  } else if (env_chg_rate=="200") {
+    return("200")
+  } else if (env_chg_rate=="300") {
+    return("300")
+  } else if (env_chg_rate=="500") {
+    return("500")
+  } else if (env_chg_rate=="1000") {
+    return("1000")
+  } else if (env_chg_rate=="2000") {
+    return("2000")
+  } else if (env_chg_rate=="3000") {
+    return("3000")
+  } else if (env_chg_rate=="5000") {
+    return("5000")
+  } else {
+    return("unknown")
+  }
+}
+get_env_type_label <- function(env_type) {
+  if (env_type=="consta" || env_type=="constb") {
+    return("const")
+  } else if (env_type=="cycling") {
+    return("cycling")
+  } else if (env_type=="random") {
+    return("random")
+  }
+}
+get_combined_env_type_label <- function(env_type) {
+  if (env_type=="consta" || env_type=="constb") {
+    return("cycling+const")
+  } else if (env_type=="cycling") {
+    return("cycling+const")
+  } else if (env_type=="random") {
+    return("random")
+  }
+}
+```
+
+Load 2-step landscape data
+```{r}
+ls2_run_summary_data_loc <- paste0(working_directory, "data/landscape_run_summary_step-2.csv")
+ls2_run_summary_data <- read.csv(ls2_run_summary_data_loc, na.strings="NONE")
+
+ls2_run_summary_data$COPY_MUT_PROB <- as.factor(
+  ls2_run_summary_data$COPY_MUT_PROB
+)
+ls2_run_summary_data$env_chg_rate <- as.factor(
+  ls2_run_summary_data$env_chg_rate
+)
+ls2_run_summary_data$env_condition <- as.factor(
+  ls2_run_summary_data$env_condition
+)
+ls2_run_summary_data$env_type <- as.factor(
+  ls2_run_summary_data$env_type
+)
+
+ls2_run_summary_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  ls2_run_summary_data$env_chg_rate,
+  ls2_run_summary_data$env_type
+)
+ls2_run_summary_data$env_chg_rate_label <- factor(
+  ls2_run_summary_data$env_chg_rate_label,
+  levels=c(
+    "none-a",
+    "none-b",
+    "30",
+    "50",
+    "100",
+    "200",
+    "300",
+    "500",
+    "1000",
+    "2000",
+    "3000",
+    "5000"
+  )
+)
+ls2_run_summary_data$env_type_label <- mapply(
+  get_env_type_label,
+  ls2_run_summary_data$env_type
+)
+```
+
+Load 2-step task co-occurrence data.
+```{r}
+ls2_cooccur_data_loc <- paste0(
+  working_directory,
+  "data/landscape_task_cooccurrence_treatment_summary_step-2.csv"
+)
+ls2_cooccur_data <- read.csv(ls2_cooccur_data_loc, na.strings="NONE")
+
+ls2_cooccur_data$COPY_MUT_PROB <- as.factor(
+  ls2_cooccur_data$COPY_MUT_PROB
+)
+ls2_cooccur_data$env_chg_rate <- as.factor(
+  ls2_cooccur_data$env_chg_rate
+)
+ls2_cooccur_data$env_condition <- as.factor(
+  ls2_cooccur_data$env_condition
+)
+ls2_cooccur_data$env_type <- as.factor(
+  ls2_cooccur_data$env_type
+)
+ls2_cooccur_data$task_1_id <- as.factor(
+  ls2_cooccur_data$task_1_id
+)
+ls2_cooccur_data$task_2_id <- as.factor(
+  ls2_cooccur_data$task_2_id
+)
+
+ls2_cooccur_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  ls2_cooccur_data$env_chg_rate,
+  ls2_cooccur_data$env_type
+)
+ls2_cooccur_data$env_chg_rate_label <- factor(
+  ls2_cooccur_data$env_chg_rate_label,
+  levels=c(
+    "none-a",
+    "none-b",
+    "30",
+    "50",
+    "100",
+    "200",
+    "300",
+    "500",
+    "1000",
+    "2000",
+    "3000",
+    "5000"
+  )
+)
+ls2_cooccur_data$env_type_label <- mapply(
+  get_env_type_label,
+  ls2_cooccur_data$env_type
+)
+```
+
+```{r}
+ls2_pairwise_cooccur_data_loc <- paste0(
+  working_directory,
+  "data/landscape_task_cooccurrence_step-2.csv"
+)
+ls2_pairwise_cooccur_data <- read.csv(ls2_pairwise_cooccur_data_loc, na.strings="NONE")
+
+ls2_pairwise_cooccur_data$COPY_MUT_PROB <- as.factor(
+  ls2_pairwise_cooccur_data$COPY_MUT_PROB
+)
+ls2_pairwise_cooccur_data$env_chg_rate <- as.factor(
+  ls2_pairwise_cooccur_data$env_chg_rate
+)
+ls2_pairwise_cooccur_data$env_condition <- as.factor(
+  ls2_pairwise_cooccur_data$env_condition
+)
+ls2_pairwise_cooccur_data$env_type <- as.factor(
+  ls2_pairwise_cooccur_data$env_type
+)
+ls2_pairwise_cooccur_data$task_1_id <- as.factor(
+  ls2_pairwise_cooccur_data$task_1_id
+)
+ls2_pairwise_cooccur_data$task_2_id <- as.factor(
+  ls2_pairwise_cooccur_data$task_2_id
+)
+
+ls2_pairwise_cooccur_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  ls2_pairwise_cooccur_data$env_chg_rate,
+  ls2_pairwise_cooccur_data$env_type
+)
+ls2_pairwise_cooccur_data$env_chg_rate_label <- factor(
+  ls2_pairwise_cooccur_data$env_chg_rate_label,
+  levels=c(
+    "none-a",
+    "none-b",
+    "30",
+    "50",
+    "100",
+    "200",
+    "300",
+    "500",
+    "1000",
+    "2000",
+    "3000",
+    "5000"
+  )
+)
+ls2_pairwise_cooccur_data$env_type_label <- mapply(
+  get_env_type_label,
+  ls2_pairwise_cooccur_data$env_type
+)
+```
+
+```{r}
+ls2_phen_dists_data_loc <- paste0(working_directory, "data/mutant_phenotype_distances_step-2.csv")
+ls2_phen_dists_data <- read.csv(ls2_phen_dists_data_loc, na.strings="NONE")
+
+ls2_phen_dists_data$COPY_MUT_PROB <- as.factor(
+  ls2_phen_dists_data$COPY_MUT_PROB
+)
+ls2_phen_dists_data$env_chg_rate <- as.factor(
+  ls2_phen_dists_data$env_chg_rate
+)
+ls2_phen_dists_data$env_condition <- as.factor(
+  ls2_phen_dists_data$env_condition
+)
+ls2_phen_dists_data$env_type <- as.factor(
+  ls2_phen_dists_data$env_type
+)
+
+ls2_phen_dists_data$distance <- factor(
+  ls2_phen_dists_data$distance,
+  levels=c(
+    -1,
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  )
+)
+
+# Hacky/inefficient way to assign rep_ids based on replicate_id ordering
+ls2_simplify_replicate_id <- function(e, m, rep_id) {
+  treatment_data <- filter(
+    ls2_phen_dists_data,
+    (env_condition==e) & (COPY_MUT_PROB==m)
+  )
+  rep_ids <- as.integer(levels(factor(treatment_data$replicate_id)))
+  rep_id_map <- as.data.frame(rep_ids)
+  rep_id_map$order <- order(rep_id_map$rep_ids)
+  return(filter(rep_id_map, rep_ids==rep_id)$order)
+}
+ls2_phen_dists_data$rep_id <- mapply(
+  ls2_simplify_replicate_id,
+  ls2_phen_dists_data$env_condition,
+  ls2_phen_dists_data$COPY_MUT_PROB,
+  ls2_phen_dists_data$replicate_id
+)
+ls2_phen_dists_data$rep_id <- as.factor(
+  ls2_phen_dists_data$rep_id
+)
+
+ls2_phen_dists_data$replicate_id <- as.factor(
+  ls2_phen_dists_data$replicate_id
+)
+ls2_phen_dists_data$RANDOM_SEED <- as.factor(
+  ls2_phen_dists_data$RANDOM_SEED
+)
+
+ls2_phen_dists_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  ls2_phen_dists_data$env_chg_rate,
+  ls2_phen_dists_data$env_type
+)
+ls2_phen_dists_data$env_chg_rate_label <- factor(
+  ls2_phen_dists_data$env_chg_rate_label,
+  levels=c(
+    "none-a",
+    "none-b",
+    "30",
+    "50",
+    "100",
+    "200",
+    "300",
+    "500",
+    "1000",
+    "2000",
+    "3000",
+    "5000"
+  )
+)
+ls2_phen_dists_data$env_type_label <- mapply(
+  get_env_type_label,
+  ls2_phen_dists_data$env_type
+)
+```
+
+Load 2-step task toggle count distribution data
+
+```{r}
+ls2_task_toggle_data_loc <- paste0(working_directory, "data/mutant_task_toggle_distribution_step-1.csv")
+ls2_task_toggle_data <- read.csv(ls2_task_toggle_data_loc, na.strings="NONE")
+
+ls2_task_toggle_data$COPY_MUT_PROB <- as.factor(
+  ls2_task_toggle_data$COPY_MUT_PROB
+)
+ls2_task_toggle_data$env_chg_rate <- as.factor(
+  ls2_task_toggle_data$env_chg_rate
+)
+ls2_task_toggle_data$env_condition <- as.factor(
+  ls2_task_toggle_data$env_condition
+)
+ls2_task_toggle_data$env_type <- as.factor(
+  ls2_task_toggle_data$env_type
+)
+ls2_task_toggle_data$num_tasks_toggled <- factor(
+  ls2_task_toggle_data$num_tasks_toggled,
+  levels=c(
+    -1,
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  )
+)
+
+# Hacky/inefficient way to assign rep_ids based on replicate_id ordering
+ls2_task_toggle_simplify_replicate_id <- function(e, m, rep_id) {
+  treatment_data <- filter(
+    ls2_task_toggle_data,
+    (env_condition==e) & (COPY_MUT_PROB==m)
+  )
+  rep_ids <- as.integer(levels(factor(treatment_data$RANDOM_SEED)))
+  rep_id_map <- as.data.frame(rep_ids)
+  rep_id_map$order <- order(rep_id_map$rep_ids)
+  return(filter(rep_id_map, rep_ids==rep_id)$order)
+}
+ls2_task_toggle_data$rep_id <- mapply(
+  ls1_task_toggle_simplify_replicate_id,
+  ls2_task_toggle_data$env_condition,
+  ls2_task_toggle_data$COPY_MUT_PROB,
+  ls2_task_toggle_data$RANDOM_SEED
+)
+ls2_task_toggle_data$rep_id <- as.factor(
+  ls2_task_toggle_data$rep_id
+)
+
+ls2_task_toggle_data$RANDOM_SEED <- as.factor(
+  ls2_task_toggle_data$RANDOM_SEED
+)
+
+ls2_task_toggle_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  ls2_task_toggle_data$env_chg_rate,
+  ls2_task_toggle_data$env_type
+)
+ls2_task_toggle_data$env_chg_rate_label <- factor(
+  ls2_task_toggle_data$env_chg_rate_label,
+  levels=c(
+    "none-a",
+    "none-b",
+    "30",
+    "50",
+    "100",
+    "200",
+    "300",
+    "500",
+    "1000",
+    "2000",
+    "3000",
+    "5000"
+  )
+)
+ls2_task_toggle_data$env_type_label <- mapply(
+  get_env_type_label,
+  ls2_task_toggle_data$env_type
+)
+```
+
+Load run summary data
+
+```{r}
+summary_data_loc <- paste0(working_directory, "data/aggregate.csv")
+summary_data <- read.csv(summary_data_loc, na.strings="NONE")
+
+summary_data$COPY_MUT_PROB <- as.factor(
+  summary_data$COPY_MUT_PROB
+)
+summary_data$env_chg_rate <- as.factor(
+  summary_data$env_chg_rate
+)
+summary_data$env_condition <- as.factor(
+  summary_data$env_condition
+)
+summary_data$env_type <- as.factor(
+  summary_data$env_type
+)
+
+# Add final mutation rate to landscape summary data
+get_final_mut_rate <- function(seed) {
+  filtered_data <- filter(summary_data, RANDOM_SEED==seed)
+  return(filtered_data$final_average_copy_mutation_rate)
+}
+
+ls2_run_summary_data$final_average_copy_mutation_rate <- mapply(
+  get_final_mut_rate,
+  ls2_run_summary_data$RANDOM_SEED
+)
+
+get_dom_match_score_env_a <- function(seed) {
+  filtered_data <- filter(summary_data, RANDOM_SEED==seed)
+  return(filtered_data$dom_match_score_env_a)
+}
+
+ls2_phen_dists_data$dom_match_score_env_a <- mapply(
+  get_dom_match_score_env_a,
+  ls2_phen_dists_data$RANDOM_SEED
+)
+```
+
+Miscellaneous setup.
+
+```{r}
+# Configure our default graphing theme
+theme_set(theme_cowplot())
+# Palette
+cb_palette <- "Set2"
+alpha <- 0.05
+# Create a directory to store plots
+plot_directory <- paste0(working_directory, "plots/")
+dir.create(plot_directory, showWarnings=FALSE)
+```
+
+## Number of unique phenotypes
+
+```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_chg_rate_label,
+      y=num_unique_viable_phenotypes,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x = element_text(angle = 90),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "num_unique_viable_phenotypes_step-2.pdf")
+)
+```
+
+## num_viable_mutants_flip_env
+
+```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_chg_rate_label,
+      y=num_viable_mutants_flip_env,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x = element_text(angle = 90),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "num_viable_mutants_flip_env_step-2.pdf")
+)
+```
+
+## total_npmi
+
+```{r}
+ggplot(
+    ls2_run_summary_data,
+    aes(
+      x=env_chg_rate_label,
+      y=total_npmi,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  geom_hline(
+    yintercept=0,
+    linetype="dashed",
+    size=0.5
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x = element_text(angle = 90),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "total_npmi_step-2.pdf")
+)
+```
+
+## Final mutation rate vs npmi
+
+```{r}
+ggplot(
+    filter(
+      ls2_run_summary_data,
+      env_chg_rate_label==1000
+    ),
+    aes(
+      x=total_npmi,
+      y=final_average_copy_mutation_rate
+      # fill=env_condition
+    )
+  ) +
+  geom_point(
+    # mapping=aes(color=env_condition)
+    # position = position_jitter(width = .15)
+  ) +
+  geom_smooth(
+    method="lm"
+  ) +
+  geom_hline(
+    yintercept=0,
+    linetype="dashed",
+    size=0.5
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    # axis.text.x = element_text(angle = 90),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "total_npmi_vs_final_mut_rate_step-2.pdf")
+)
+```
+
+```{r}
+ggplot(
+    filter(
+      ls2_run_summary_data,
+      env_type_label=="cycling"
+    ),
+    aes(
+      x=total_npmi,
+      y=final_average_copy_mutation_rate
+      # fill=env_condition
+    )
+  ) +
+  geom_point(
+    # mapping=aes(color=env_condition)
+    # position = position_jitter(width = .15)
+  ) +
+  geom_smooth(
+    method="lm"
+  ) +
+  geom_hline(
+    yintercept=0,
+    linetype="dashed",
+    size=0.5
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_chg_rate_label
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    # axis.text.x = element_text(angle = 90),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "total_npmi_vs_final_mut_rate_step-2.pdf")
+)
+```
+
+```{r}
+lm_data <- filter(
+  ls2_run_summary_data,
+  env_type_label=="cycling"
+)
+summary(lm(
+  data=lm_data,
+  formula=final_average_copy_mutation_rate~total_npmi+COPY_MUT_PROB+env_chg_rate_label
+))
+```

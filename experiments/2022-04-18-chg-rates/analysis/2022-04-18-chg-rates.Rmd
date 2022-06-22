@@ -1,0 +1,836 @@
+# 2022-03-14 - Fixed mutation rates
+
+## Setup
+
+```{r}
+experiment_slug <- "2022-04-18-chg-rates"
+working_directory <- paste0("experiments/",experiment_slug,"/analysis/")
+```
+
+### Analysis dependencies
+
+Load all required R libraries
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(scales)
+library(cowplot)
+library(RColorBrewer)
+source("https://gist.githubusercontent.com/benmarwick/2a1bb0133ff568cbe28d/raw/fb53bd97121f7f9ce947837ef1a4c65a73bffb3f/geom_flat_violin.R")
+```
+
+These analyses were knit with the following environment:
+
+```{r}
+print(version)
+```
+
+### Load data
+
+Load summary data.
+
+```{r}
+summary_data_loc <- paste0(working_directory, "data/aggregate.csv")
+summary_data <- read.csv(summary_data_loc, na.strings="NONE")
+
+summary_data$COPY_MUT_PROB <- as.factor(
+  summary_data$COPY_MUT_PROB
+)
+summary_data$env_chg_rate <- factor(
+  summary_data$env_chg_rate,
+  levels=c(
+    "none",
+    "30",
+    "50",
+    "100",
+    "200",
+    "300",
+    "500",
+    "1000",
+    "2000",
+    "3000",
+    "5000"
+  )
+)
+summary_data$env_condition <- as.factor(
+  summary_data$env_condition
+)
+summary_data$env_type <- as.factor(
+  summary_data$env_type
+)
+
+get_env_chg_rate_label <- function(env_chg_rate, env_type) {
+  if (env_chg_rate == "none" && env_type=="consta") {
+    return("none-a")
+  } else if (env_chg_rate == "none" && env_type=="constb") {
+    return("none-b")
+  } else if (env_chg_rate=="30") {
+    return("30")
+  } else if (env_chg_rate=="50") {
+    return("50")
+  } else if (env_chg_rate=="100") {
+    return("100")
+  } else if (env_chg_rate=="200") {
+    return("200")
+  } else if (env_chg_rate=="300") {
+    return("300")
+  } else if (env_chg_rate=="500") {
+    return("500")
+  } else if (env_chg_rate=="1000") {
+    return("1000")
+  } else if (env_chg_rate=="2000") {
+    return("2000")
+  } else if (env_chg_rate=="3000") {
+    return("3000")
+  } else if (env_chg_rate=="5000") {
+    return("5000")
+  } else {
+    return("unknown")
+  }
+}
+get_env_type_label <- function(env_type) {
+  if (env_type=="consta" || env_type=="constb") {
+    return("const")
+  } else if (env_type=="cycling") {
+    return("cycling")
+  } else if (env_type=="random") {
+    return("random")
+  }
+}
+get_combined_env_type_label <- function(env_type) {
+  if (env_type=="consta" || env_type=="constb") {
+    return("cycling+const")
+  } else if (env_type=="cycling") {
+    return("cycling+const")
+  } else if (env_type=="random") {
+    return("random")
+  }
+}
+summary_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  summary_data$env_chg_rate,
+  summary_data$env_type
+)
+summary_data$env_chg_rate_label <- factor(
+  summary_data$env_chg_rate_label,
+  levels=c(
+    "none-a",
+    "none-b",
+    "30",
+    "50",
+    "100",
+    "200",
+    "300",
+    "500",
+    "1000",
+    "2000",
+    "3000",
+    "5000"
+  )
+)
+summary_data$env_type_label <- mapply(
+  get_env_type_label,
+  summary_data$env_type
+)
+summary_data$combined_env_type_label <- mapply(
+  get_combined_env_type_label,
+  summary_data$env_type
+)
+```
+
+Load time series data.
+
+```{r}
+time_series_data_loc <- paste0(working_directory, "data/time_series_u0-u300000.csv")
+time_series_data <- read.csv(time_series_data_loc, na.strings="NONE")
+
+time_series_data$COPY_MUT_PROB <- as.factor(
+  time_series_data$COPY_MUT_PROB
+)
+time_series_data$env_chg_rate <- as.factor(
+  time_series_data$env_chg_rate
+)
+time_series_data$env_condition <- as.factor(
+  time_series_data$env_condition
+)
+time_series_data$env_type <- as.factor(
+  time_series_data$env_type
+)
+
+time_series_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  time_series_data$env_chg_rate,
+  time_series_data$env_type
+)
+time_series_data$env_chg_rate_label <- factor(
+  time_series_data$env_chg_rate_label,
+  levels=c(
+    "none-a",
+    "none-b",
+    "30",
+    "50",
+    "100",
+    "200",
+    "300",
+    "500",
+    "1000",
+    "2000",
+    "3000",
+    "5000"
+  )
+)
+time_series_data$env_type_label <- mapply(
+  get_env_type_label,
+  time_series_data$env_type
+)
+```
+
+Miscellaneous setup.
+
+```{r}
+# Configure our default graphing theme
+theme_set(theme_cowplot())
+# Palette
+cb_palette <- "Set2"
+alpha <- 0.05
+# Create a directory to store plots
+plot_directory <- paste0(working_directory, "plots/")
+dir.create(plot_directory, showWarnings=FALSE)
+```
+
+## True replication rate
+
+### Time series
+
+```{r}
+ggplot(
+    time_series_data,
+    # filter(time_series_data, (update%%1000)==0),
+    aes(
+      x=update,
+      y=avg_true_replication_rate,
+      fill=env_condition,
+      color=env_condition
+    )
+  ) +
+  stat_summary(geom="line", fun=mean) +
+  stat_summary(
+    geom="ribbon",
+    fun.data="mean_cl_boot",
+    fun.args=list(conf.int=0.95),
+    alpha=0.2,
+    linetype=0
+  ) +
+  # stat_summary(
+  #   geom="ribbon",
+  #   fun.min=min,
+  #   fun.max=max,
+  #   alpha=0.2,
+  #   linetype=0
+  # ) +
+  scale_fill_brewer(
+    palette=cb_palette
+  ) +
+  scale_color_brewer(
+    palette=cb_palette
+  ) +
+  scale_y_continuous(
+    trans=log10_trans()
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label
+  ) +
+  theme(
+    legend.position="bottom"
+  )
+
+ggsave(
+  paste0(working_directory, "plots/", "avg_true_replication_rate_ot.pdf"),
+  width=15,
+  height=10
+)
+```
+
+### Final
+
+```{r}
+ggplot(
+    summary_data,
+    aes(
+      x=env_chg_rate_label,
+      y=avg_true_replication_rate,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  # scale_fill_brewer(
+  #   palette=cb_palette
+  # ) +
+  # scale_color_brewer(
+  #   palette=cb_palette
+  # ) +
+  scale_y_continuous(
+    trans=log10_trans()
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x = element_text(angle = 90),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "avg_true_replication_rate.pdf")
+)
+```
+
+## Final mutation rates
+
+```{r}
+ggplot(
+    summary_data,
+    aes(
+      x=env_chg_rate_label,
+      y=final_average_copy_mutation_rate,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  # scale_fill_brewer(
+  #   palette=cb_palette
+  # ) +
+  # scale_color_brewer(
+  #   palette=cb_palette
+  # ) +
+  # scale_y_continuous(
+  #   trans=log10_trans()
+  # ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x = element_text(angle = 90),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "final_average_copy_mutation_rate.pdf")
+)
+```
+
+```{r}
+mut_rate_ot <- ggplot(
+    filter(
+      time_series_data,
+      (update%%1000)==0
+    ),
+    aes(
+      x=update,
+      y=mutation_rates_average_copy_mutation_rate,
+      fill=env_condition,
+      color=env_condition
+    )
+  ) +
+  stat_summary(geom="line", fun=mean) +
+  # stat_summary(
+  #   geom="ribbon",
+  #   fun.data="mean_cl_boot",
+  #   fun.args=list(conf.int=0.95),
+  #   alpha=0.2,
+  #   linetype=0
+  # ) +
+  stat_summary(
+    geom="ribbon",
+    fun.min=min,
+    fun.max=max,
+    alpha=0.2,
+    linetype=0
+  ) +
+  # scale_fill_brewer(
+  #   palette=cb_palette
+  # ) +
+  # scale_color_brewer(
+  #   palette=cb_palette
+  # ) +
+  scale_y_continuous(
+    trans=log10_trans()
+  ) +
+  facet_grid(
+    COPY_MUT_PROB~env_type_label
+  ) +
+  theme(
+    legend.position="bottom"
+  )
+
+ggsave(
+  mut_rate_ot,
+  filename=paste0(working_directory, "plots/", "average_copy_mutation_rate_ot.pdf"),
+  width=15,
+  height=10
+)
+```
+
+## Pairwise knockout data
+
+```{r}
+pw_ko_data_loc <- paste0(working_directory, "data/pairwise_knockouts_run_summary.csv")
+pw_ko_data <- read.csv(pw_ko_data_loc, na.strings="NONE")
+
+pw_ko_data$COPY_MUT_PROB <- as.factor(
+  pw_ko_data$COPY_MUT_PROB
+)
+pw_ko_data$env_chg_rate <- as.factor(
+  pw_ko_data$env_chg_rate
+)
+pw_ko_data$env_condition <- as.factor(
+  pw_ko_data$env_condition
+)
+pw_ko_data$env_type <- as.factor(
+  pw_ko_data$env_type
+)
+
+pw_ko_data$env_chg_rate_label <- mapply(
+  get_env_chg_rate_label,
+  pw_ko_data$env_chg_rate,
+  pw_ko_data$env_type
+)
+pw_ko_data$env_chg_rate_label <- factor(
+  pw_ko_data$env_chg_rate_label,
+  levels=c(
+    "none-a",
+    "none-b",
+    "30",
+    "50",
+    "100",
+    "200",
+    "300",
+    "500",
+    "1000",
+    "2000",
+    "3000",
+    "5000"
+  )
+)
+pw_ko_data$env_type_label <- mapply(
+  get_env_type_label,
+  pw_ko_data$env_type
+)
+pw_ko_data$combined_env_type_label <- mapply(
+  get_combined_env_type_label,
+  pw_ko_data$env_type
+)
+
+pw_ko_data$redundant_sites_per_task <- pw_ko_data$num_redundant_task_sites / pw_ko_data$num_tasks_performed
+pw_ko_data$sites_per_task <- pw_ko_data$num_task_coding_sites / pw_ko_data$num_tasks_performed
+pw_ko_data$prop_multi_task_sites <- pw_ko_data$num_multi_task_sites / pw_ko_data$num_task_coding_sites
+
+pw_ko_longer <- pivot_longer(
+  pw_ko_data,
+  cols=c(
+    "num_and_task_coding_sites",
+    "num_andnot_task_coding_sites",
+    "num_nand_task_coding_sites",
+    "num_not_task_coding_sites",
+    "num_or_task_coding_sites",
+    "num_ornot_task_coding_sites"
+  ),
+  names_to="task_name",
+  values_to="num_sites"
+)
+```
+
+### num_redundant_viability_sites
+
+```{r}
+ggplot(
+    pw_ko_data,
+    aes(
+      x=env_chg_rate_label,
+      y=num_redundant_viability_sites,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  # scale_fill_brewer(
+  #   palette=cb_palette
+  # ) +
+  # scale_color_brewer(
+  #   palette=cb_palette
+  # ) +
+  # scale_y_continuous(
+  #   trans=log10_trans()
+  # ) +
+  facet_grid(
+    combined_env_type_label~COPY_MUT_PROB,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "num_redundant_viability_sites.pdf")
+)
+```
+
+### num_viability_sites
+
+```{r}
+ggplot(
+    pw_ko_data,
+    aes(
+      x=env_chg_rate_label,
+      y=num_viability_sites,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  # scale_fill_brewer(
+  #   palette=cb_palette
+  # ) +
+  # scale_color_brewer(
+  #   palette=cb_palette
+  # ) +
+  # scale_y_continuous(
+  #   trans=log10_trans()
+  # ) +
+  facet_grid(
+    combined_env_type_label~COPY_MUT_PROB,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "num_viability_sites.pdf")
+)
+```
+
+### num_task_recovery_sites
+
+```{r}
+ggplot(
+    pw_ko_data,
+    aes(
+      x=env_chg_rate_label,
+      y=num_task_recovery_sites,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  # scale_fill_brewer(
+  #   palette=cb_palette
+  # ) +
+  # scale_color_brewer(
+  #   palette=cb_palette
+  # ) +
+  # scale_y_continuous(
+  #   trans=log10_trans()
+  # ) +
+  facet_grid(
+    combined_env_type_label~COPY_MUT_PROB,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "num_task_recovery_sites.pdf")
+)
+```
+
+### num_redundant_task_sites
+
+```{r}
+ggplot(
+    pw_ko_data,
+    aes(
+      x=env_chg_rate_label,
+      y=num_redundant_task_sites,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  # scale_fill_brewer(
+  #   palette=cb_palette
+  # ) +
+  # scale_color_brewer(
+  #   palette=cb_palette
+  # ) +
+  # scale_y_continuous(
+  #   trans=log10_trans()
+  # ) +
+  facet_grid(
+    combined_env_type_label~COPY_MUT_PROB,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "num_redundant_task_sites.pdf")
+)
+```
+
+
+### num_nonredundant_task_sites
+
+```{r}
+ggplot(
+    pw_ko_data,
+    aes(
+      x=env_chg_rate_label,
+      y=num_nonredundant_task_sites,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  # scale_fill_brewer(
+  #   palette=cb_palette
+  # ) +
+  # scale_color_brewer(
+  #   palette=cb_palette
+  # ) +
+  # scale_y_continuous(
+  #   trans=log10_trans()
+  # ) +
+  facet_grid(
+    combined_env_type_label~COPY_MUT_PROB,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "num_nonredundant_task_sites.pdf")
+)
+```
+
+### num_task_coding_sites
+
+```{r}
+ggplot(
+    # filter(pw_ko_data,tasks_performed=="and;not;or"),
+    pw_ko_data,
+    aes(
+      x=env_chg_rate_label,
+      y=num_task_coding_sites,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  # scale_fill_brewer(
+  #   palette=cb_palette
+  # ) +
+  # scale_color_brewer(
+  #   palette=cb_palette
+  # ) +
+  # scale_y_continuous(
+  #   trans=log10_trans()
+  # ) +
+  facet_grid(
+    combined_env_type_label~COPY_MUT_PROB,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "num_task_coding_sites.pdf")
+)
+```
+
+### sites_per_task
+
+```{r}
+ggplot(
+    # filter(pw_ko_data,tasks_performed=="and;not;or"),
+    pw_ko_data,
+    aes(
+      x=env_chg_rate_label,
+      y=sites_per_task,
+      fill=env_condition
+    )
+  ) +
+  geom_flat_violin(
+    position = position_nudge(x = .2, y = 0),
+    alpha = .8,
+    adjust=1.5
+  ) +
+  geom_point(
+    mapping=aes(color=env_condition),
+    position = position_jitter(width = .15),
+    size = .5,
+    alpha = 0.8
+  ) +
+  geom_boxplot(
+    width = .1,
+    outlier.shape = NA,
+    alpha = 0.5
+  ) +
+  # scale_fill_brewer(
+  #   palette=cb_palette
+  # ) +
+  # scale_color_brewer(
+  #   palette=cb_palette
+  # ) +
+  # scale_y_continuous(
+  #   trans=log10_trans()
+  # ) +
+  facet_grid(
+    combined_env_type_label~COPY_MUT_PROB,
+    scales="free_x"
+  ) +
+  theme(
+    legend.position="none",
+    axis.text=element_text(size=14),
+    axis.text.x=element_text(angle=45,hjust=1),
+    panel.border = element_rect(color = "grey", fill=NA, size=1.5)
+  )
+ggsave(
+  paste0(working_directory, "plots/", "sites_per_task.pdf")
+)
+```
